@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:provider/provider.dart';
 import '../../core/constants/app_colors.dart';
+import '../../domain/entities/user.dart';
+import '../../presentation/viewmodels/auth_viewmodel.dart';
 import '../../widgets/qr_modal_widget.dart';
 import '../../widgets/notification_badge_widget.dart';
 // Note: We need to route to TestResultsScreen and BillingScreen.
@@ -11,9 +14,9 @@ import '../notifications/notifications_screen.dart';
 import '../auth/auth_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
-  const ProfileScreen({super.key, this.isGuest = true});
+  const ProfileScreen({super.key, this.user});
 
-  final bool isGuest;
+  final User? user;
 
   @override
   State<ProfileScreen> createState() => _ProfileScreenState();
@@ -41,9 +44,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
       body: SingleChildScrollView(
         child: Column(
           children: [
-            widget.isGuest ? _buildGuestHeader(context) : _buildHeader(context),
+            widget.user == null
+                ? _buildGuestHeader(context)
+                : _buildHeader(context, widget.user!),
             const SizedBox(height: 24),
-            if (widget.isGuest)
+            if (widget.user == null)
               _buildGuestActions(context)
             else
               _buildMenuItems(context),
@@ -132,7 +137,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Widget _buildHeader(BuildContext context) {
+  Widget _buildHeader(BuildContext context, User user) {
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: const BoxDecoration(
@@ -179,9 +184,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  'Nguyễn Văn An',
-                  style: TextStyle(
+                Text(
+                  user.name,
+                  style: const TextStyle(
                       fontSize: 20,
                       fontWeight: FontWeight.bold,
                       color: AppColors.slate800),
@@ -194,9 +199,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     color: AppColors.slate100,
                     borderRadius: BorderRadius.circular(4),
                   ),
-                  child: const Text(
-                    'ID: BN-12345678',
-                    style: TextStyle(
+                  child: Text(
+                    'ID: ${user.patientCode}',
+                    style: const TextStyle(
                         color: AppColors.slate600,
                         fontSize: 13,
                         fontWeight: FontWeight.w600),
@@ -210,8 +215,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
             onTap: () {
               showDialog(
                 context: context,
-                builder: (context) => const Dialog(
-                  child: QrModalWidget(patientCode: 'BN-12345678'),
+                builder: (context) => Dialog(
+                  child: QrModalWidget(patientCode: user.patientCode),
                 ),
               );
             },
@@ -289,7 +294,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 icon: FontAwesomeIcons.arrowRightFromBracket,
                 title: 'Đăng xuất',
                 isDestructive: true,
-                onTap: () {},
+                onTap: () async {
+                  await context.read<AuthViewModel>().logout();
+                  if (!context.mounted) return;
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                        content: Text('Đã đăng xuất khỏi ứng dụng.')),
+                  );
+                },
               ),
             ],
           ),

@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:appmobi/presentation/screens/auth/login_screen.dart';
-import 'package:appmobi/presentation/screens/auth/register_screen.dart';
+import 'package:appmobi/screens/auth/auth_screen.dart';
 import 'package:appmobi/screens/main_navigation_screen.dart';
 
 class AppRoutes {
@@ -13,8 +12,8 @@ class AppRoutes {
   static const String notifications = '/notifications';
 
   static Map<String, WidgetBuilder> get routes => {
-        login: (context) => const LoginScreen(),
-        register: (context) => const RegisterScreen(),
+        login: (context) => const AuthScreen(),
+        register: (context) => const AuthScreen(initialMode: AuthMode.register),
         home: (context) => const MainNavigationScreen(),
         // TODO: add other route builders when screens are created
       };

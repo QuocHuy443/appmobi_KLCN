@@ -1,64 +1,74 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../core/constants/app_colors.dart';
+import '../../presentation/viewmodels/auth_viewmodel.dart';
 import '../main_navigation_screen.dart';
 
 enum AuthMode { login, register }
 
 class AuthScreen extends StatefulWidget {
-  const AuthScreen({super.key});
+  const AuthScreen({super.key, this.initialMode = AuthMode.login});
+
+  final AuthMode initialMode;
 
   @override
   State<AuthScreen> createState() => _AuthScreenState();
 }
 
 class _AuthScreenState extends State<AuthScreen> {
-  static const _demoEmail = 'patient@h2t.vn';
-  static const _demoPassword = '123456';
-  AuthMode _mode = AuthMode.login;
+  late AuthMode _mode = widget.initialMode;
   final _formKey = GlobalKey<FormState>();
-  final _emailController = TextEditingController();
+  final _identifierController = TextEditingController();
   final _passwordController = TextEditingController();
   final _nameController = TextEditingController();
+  final _emailController = TextEditingController();
+  final _birthDateController = TextEditingController();
+  String _gender = 'Nam';
   bool _obscurePassword = true;
 
   bool get _isRegistering => _mode == AuthMode.register;
 
   @override
   void dispose() {
-    _emailController.dispose();
+    _identifierController.dispose();
     _passwordController.dispose();
     _nameController.dispose();
+    _emailController.dispose();
+    _birthDateController.dispose();
     super.dispose();
   }
 
-  void _submit() {
+  Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
 
-    if (!_isRegistering &&
-        (_emailController.text.trim() != _demoEmail ||
-            _passwordController.text != _demoPassword)) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content:
-              Text('Thông tin đăng nhập chưa đúng. Hãy dùng tài khoản test.'),
-          behavior: SnackBarBehavior.floating,
-        ),
+    final authViewModel = context.read<AuthViewModel>();
+    if (_isRegistering) {
+      await authViewModel.register(
+        name: _nameController.text.trim(),
+        phone: _identifierController.text.trim(),
+        birthDate: _birthDateController.text,
+        gender: _gender,
+        password: _passwordController.text,
+        email: _emailController.text.trim(),
       );
-      return;
+    } else {
+      await authViewModel.login(
+        _identifierController.text.trim(),
+        _passwordController.text,
+      );
     }
 
-    Navigator.of(context).pushReplacement(
-      MaterialPageRoute(
-        builder: (_) => const MainNavigationScreen(isLoggedIn: true),
-      ),
-    );
-  }
-
-  void _fillDemoAccount() {
-    setState(() {
-      _emailController.text = _demoEmail;
-      _passwordController.text = _demoPassword;
-    });
+    if (!mounted) return;
+    if (authViewModel.currentUser != null) {
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (_) => const MainNavigationScreen()),
+        (route) => false,
+      );
+    } else if (authViewModel.errorMessage != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(authViewModel.errorMessage!)),
+      );
+    }
   }
 
   void _switchMode(AuthMode mode) {
@@ -77,6 +87,7 @@ class _AuthScreenState extends State<AuthScreen> {
   @override
   Widget build(BuildContext context) {
     final bottomInset = MediaQuery.viewInsetsOf(context).bottom;
+    final authViewModel = context.watch<AuthViewModel>();
 
     return Scaffold(
       backgroundColor: AppColors.slate50,
@@ -137,20 +148,64 @@ class _AuthScreenState extends State<AuthScreen> {
                                 : null,
                       ),
                       const SizedBox(height: 16),
+                      _buildField(
+                        controller: _birthDateController,
+                        label: 'Ngày sinh',
+                        hint: 'Chọn ngày sinh',
+                        icon: Icons.calendar_today_outlined,
+                        validator: (value) => value == null || value.isEmpty
+                            ? 'Vui lòng chọn ngày sinh'
+                            : null,
+                        onTap: _selectBirthDate,
+                      ),
+                      const SizedBox(height: 16),
+                      DropdownButtonFormField<String>(
+                        initialValue: _gender,
+                        decoration: const InputDecoration(
+                          labelText: 'Giới tính',
+                          prefixIcon: Icon(Icons.person_outline),
+                        ),
+                        items: const [
+                          DropdownMenuItem(value: 'Nam', child: Text('Nam')),
+                          DropdownMenuItem(value: 'Nữ', child: Text('Nữ')),
+                          DropdownMenuItem(value: 'Khác', child: Text('Khác')),
+                        ],
+                        onChanged: (value) {
+                          if (value != null) setState(() => _gender = value);
+                        },
+                      ),
+                      const SizedBox(height: 16),
                     ],
                     _buildField(
-                      controller: _emailController,
-                      label: 'Email hoặc số điện thoại',
-                      hint: 'Nhập thông tin đăng nhập',
-                      icon: Icons.alternate_email,
-                      keyboardType: TextInputType.emailAddress,
+                      controller: _identifierController,
+                      label: _isRegistering
+                          ? 'Số điện thoại'
+                          : 'Tên đăng nhập hoặc số điện thoại',
+                      hint: _isRegistering
+                          ? 'Số điện thoại đăng ký tài khoản'
+                          : 'Nhập tên đăng nhập hoặc số điện thoại',
+                      icon: Icons.phone_outlined,
+                      keyboardType: TextInputType.phone,
                       textInputAction: TextInputAction.next,
-                      validator: (value) =>
-                          value == null || value.trim().isEmpty
-                              ? 'Vui lòng nhập email hoặc số điện thoại'
-                              : null,
+                      validator: (value) => value == null ||
+                              value.trim().isEmpty
+                          ? _isRegistering
+                              ? 'Vui lòng nhập số điện thoại'
+                              : 'Vui lòng nhập tên đăng nhập hoặc số điện thoại'
+                          : null,
                     ),
                     const SizedBox(height: 16),
+                    if (_isRegistering) ...[
+                      _buildField(
+                        controller: _emailController,
+                        label: 'Email (không bắt buộc)',
+                        hint: 'example@email.com',
+                        icon: Icons.email_outlined,
+                        keyboardType: TextInputType.emailAddress,
+                        validator: (_) => null,
+                      ),
+                      const SizedBox(height: 16),
+                    ],
                     _buildField(
                       controller: _passwordController,
                       label: 'Mật khẩu',
@@ -174,59 +229,29 @@ class _AuthScreenState extends State<AuthScreen> {
                           : null,
                       onFieldSubmitted: (_) => _submit(),
                     ),
-                    if (!_isRegistering)
-                      Align(
-                        alignment: Alignment.centerRight,
-                        child: TextButton(
-                          onPressed: () {},
-                          child: const Text('Quên mật khẩu?'),
-                        ),
-                      )
-                    else
-                      const SizedBox(height: 20),
-                    if (!_isRegistering) ...[
-                      Container(
-                        padding: const EdgeInsets.all(14),
-                        decoration: BoxDecoration(
-                          color: AppColors.medical50,
-                          borderRadius: BorderRadius.circular(14),
-                          border: Border.all(color: AppColors.medical100),
-                        ),
-                        child: Row(
-                          children: [
-                            const Icon(Icons.science_outlined,
-                                color: AppColors.medical700),
-                            const SizedBox(width: 10),
-                            const Expanded(
-                              child: Text(
-                                'Tài khoản test: patient@h2t.vn\nMật khẩu: 123456',
-                                style: TextStyle(
-                                  color: AppColors.slate700,
-                                  fontSize: 13,
-                                  height: 1.45,
-                                ),
-                              ),
-                            ),
-                            TextButton(
-                              onPressed: _fillDemoAccount,
-                              child: const Text('Điền nhanh'),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 20),
-                    ],
+                    if (_isRegistering) const SizedBox(height: 20),
                     SizedBox(
                       height: 54,
-                      child: ElevatedButton.icon(
-                        onPressed: _submit,
-                        icon: Icon(_isRegistering
-                            ? Icons.person_add_alt_1
-                            : Icons.login),
-                        label: Text(
-                            _isRegistering ? 'Đăng ký tài khoản' : 'Đăng nhập'),
-                      ),
+                      child: authViewModel.isLoading
+                          ? const Center(child: CircularProgressIndicator())
+                          : ElevatedButton.icon(
+                              onPressed: _submit,
+                              icon: Icon(_isRegistering
+                                  ? Icons.person_add_alt_1
+                                  : Icons.login),
+                              label: Text(_isRegistering
+                                  ? 'Đăng ký tài khoản'
+                                  : 'Đăng nhập'),
+                            ),
                     ),
+                    if (authViewModel.errorMessage != null) ...[
+                      const SizedBox(height: 12),
+                      Text(
+                        authViewModel.errorMessage!,
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(color: Colors.redAccent),
+                      ),
+                    ],
                     const SizedBox(height: 22),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
@@ -274,14 +299,17 @@ class _AuthScreenState extends State<AuthScreen> {
     bool obscureText = false,
     Widget? suffixIcon,
     ValueChanged<String>? onFieldSubmitted,
+    VoidCallback? onTap,
   }) {
     return TextFormField(
       controller: controller,
       keyboardType: keyboardType,
       textInputAction: textInputAction,
       obscureText: obscureText,
+      readOnly: onTap != null,
       validator: validator,
       onFieldSubmitted: onFieldSubmitted,
+      onTap: onTap,
       decoration: InputDecoration(
         labelText: label,
         hintText: hint,
@@ -289,6 +317,20 @@ class _AuthScreenState extends State<AuthScreen> {
         suffixIcon: suffixIcon,
       ),
     );
+  }
+
+  Future<void> _selectBirthDate() async {
+    final now = DateTime.now();
+    final selected = await showDatePicker(
+      context: context,
+      initialDate: DateTime(now.year - 18, now.month, now.day),
+      firstDate: DateTime(1900),
+      lastDate: now,
+    );
+    if (selected == null) return;
+    _birthDateController.text = '${selected.year.toString().padLeft(4, '0')}-'
+        '${selected.month.toString().padLeft(2, '0')}-'
+        '${selected.day.toString().padLeft(2, '0')}';
   }
 }
 

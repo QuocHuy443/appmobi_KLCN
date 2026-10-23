@@ -1,15 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:provider/provider.dart';
 import '../core/constants/app_colors.dart';
+import '../presentation/viewmodels/auth_viewmodel.dart';
 import 'home/home_screen.dart';
 import 'appointment/appointment_screen.dart';
 import 'medical_records/medical_records_screen.dart';
 import 'profile/profile_screen.dart';
 
 class MainNavigationScreen extends StatefulWidget {
-  const MainNavigationScreen({super.key, this.isLoggedIn = false});
-
-  final bool isLoggedIn;
+  const MainNavigationScreen({super.key});
 
   @override
   State<MainNavigationScreen> createState() => _MainNavigationScreenState();
@@ -18,20 +18,20 @@ class MainNavigationScreen extends StatefulWidget {
 class _MainNavigationScreenState extends State<MainNavigationScreen> {
   int _currentIndex = 0;
 
-  List<Widget> get _pages => [
-        const HomeScreen(),
-        const AppointmentScreen(),
-        const MedicalRecordsScreen(),
-        ProfileScreen(isGuest: !widget.isLoggedIn),
-      ];
-
   @override
   Widget build(BuildContext context) {
+    final authViewModel = context.watch<AuthViewModel>();
+    final pages = [
+      const HomeScreen(),
+      const AppointmentScreen(),
+      const MedicalRecordsScreen(),
+      ProfileScreen(user: authViewModel.currentUser),
+    ];
     return Scaffold(
       body: SafeArea(
         child: IndexedStack(
           index: _currentIndex,
-          children: _pages,
+          children: pages,
         ),
       ),
       bottomNavigationBar: BottomNavigationBar(

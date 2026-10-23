@@ -1,4 +1,6 @@
 
+import 'dart:async';
+
 import 'package:provider/provider.dart';
 import 'package:provider/single_child_widget.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
@@ -21,9 +23,13 @@ class ProviderSetup {
         ),
         // Auth ViewModel uses the repository
         ChangeNotifierProvider<AuthViewModel>(
-          create: (context) => AuthViewModel(
-            authRepository: context.read<AuthRepository>(),
-          ),
+          create: (context) {
+            final viewModel = AuthViewModel(
+              authRepository: context.read<AuthRepository>(),
+            );
+            unawaited(viewModel.restoreSession());
+            return viewModel;
+          },
         ),
         // TODO: add other ViewModels (HomeViewModel, AppointmentViewModel, …)
       ];
