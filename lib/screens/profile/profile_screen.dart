@@ -295,11 +295,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 title: 'Đăng xuất',
                 isDestructive: true,
                 onTap: () async {
-                  await context.read<AuthViewModel>().logout();
+                  final auth = context.read<AuthViewModel>();
+                  await auth.logout();
                   if (!context.mounted) return;
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                        content: Text('Đã đăng xuất khỏi ứng dụng.')),
+                    SnackBar(
+                        content: Text(auth.errorMessage ??
+                            'Đã đăng xuất khỏi ứng dụng.')),
                   );
                 },
               ),

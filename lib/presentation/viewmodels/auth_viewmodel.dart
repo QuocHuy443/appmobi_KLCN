@@ -13,6 +13,7 @@ class AuthViewModel extends ChangeNotifier {
   bool _isInitialized = false;
   String? _errorMessage;
   User? _currentUser;
+  int _sessionOperation = 0;
 
   bool get isLoading => _isLoading;
   bool get isInitialized => _isInitialized;
@@ -20,27 +21,40 @@ class AuthViewModel extends ChangeNotifier {
   User? get currentUser => _currentUser;
 
   Future<void> restoreSession() async {
+    final operation = ++_sessionOperation;
+    _currentUser = null;
     try {
-      _currentUser = await _authRepository.restoreSession();
+      final user = await _authRepository.restoreSession();
+      if (operation != _sessionOperation) return;
+      _currentUser = user;
+      _errorMessage = null;
     } on AuthRepositoryException catch (error) {
-      _errorMessage = error.message;
+      if (operation == _sessionOperation) _errorMessage = error.message;
     } finally {
-      _isInitialized = true;
-      notifyListeners();
+      if (operation == _sessionOperation) {
+        _isInitialized = true;
+        notifyListeners();
+      }
     }
   }
 
   Future<void> login(String identifier, String password) async {
+    final operation = ++_sessionOperation;
     _setLoading(true);
     try {
-      _currentUser = await _authRepository.login(identifier, password);
+      final user = await _authRepository.login(identifier, password);
+      if (operation != _sessionOperation) return;
+      _currentUser = user;
       _errorMessage = null;
     } on AuthRepositoryException catch (error) {
+      if (operation != _sessionOperation) return;
       _currentUser = null;
       _errorMessage = error.message;
     } finally {
-      _isInitialized = true;
-      _setLoading(false);
+      if (operation == _sessionOperation) {
+        _isInitialized = true;
+        _setLoading(false);
+      }
     }
   }
 
@@ -52,9 +66,10 @@ class AuthViewModel extends ChangeNotifier {
     required String password,
     String email = '',
   }) async {
+    final operation = ++_sessionOperation;
     _setLoading(true);
     try {
-      _currentUser = await _authRepository.register(
+      final user = await _authRepository.register(
         name: name,
         phone: phone,
         birthDate: birthDate,
@@ -62,26 +77,37 @@ class AuthViewModel extends ChangeNotifier {
         password: password,
         email: email,
       );
+      if (operation != _sessionOperation) return;
+      _currentUser = user;
       _errorMessage = null;
     } on AuthRepositoryException catch (error) {
+      if (operation != _sessionOperation) return;
       _currentUser = null;
       _errorMessage = error.message;
     } finally {
-      _isInitialized = true;
-      _setLoading(false);
+      if (operation == _sessionOperation) {
+        _isInitialized = true;
+        _setLoading(false);
+      }
     }
   }
 
   Future<void> logout() async {
+    final operation = ++_sessionOperation;
     _setLoading(true);
+    _currentUser = null;
     try {
       await _authRepository.logout();
+      if (operation != _sessionOperation) return;
       _currentUser = null;
       _errorMessage = null;
     } on AuthRepositoryException catch (error) {
-      _errorMessage = error.message;
+      if (operation == _sessionOperation) _errorMessage = error.message;
     } finally {
-      _setLoading(false);
+      if (operation == _sessionOperation) {
+        _isInitialized = true;
+        _setLoading(false);
+      }
     }
   }
 
