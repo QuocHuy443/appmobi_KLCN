@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:provider/provider.dart';
-import '../core/constants/app_colors.dart';
-import '../presentation/viewmodels/auth_viewmodel.dart';
-import 'home/home_screen.dart';
-import 'appointment/appointment_screen.dart';
-import 'medical_records/medical_records_screen.dart';
-import 'profile/profile_screen.dart';
+import '../core/app_colors.dart';
+import '../services/auth_service.dart';
+import 'home_screen.dart';
+import 'appointment_screen.dart';
+import 'medical_records_screen.dart';
+import 'profile_screen.dart';
 
 class MainNavigationScreen extends StatefulWidget {
   const MainNavigationScreen({super.key});

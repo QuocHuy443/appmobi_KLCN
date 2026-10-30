@@ -1,8 +1,5 @@
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-
-// Đảm bảo tên package 'appmobi' đúng với tên project của bạn
-import '../lib/main.dart';
+import 'package:appmobi/main.dart';
 
 void main() {
   testWidgets('Khách có thể mở và thoát khỏi luồng xác thực',

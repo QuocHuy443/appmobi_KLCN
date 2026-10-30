@@ -4,10 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'package:appmobi/data/repositories/auth_repository_impl.dart';
-import 'package:appmobi/presentation/viewmodels/auth_viewmodel.dart';
-import 'package:appmobi/domain/repositories/auth_repository.dart';
-import 'package:appmobi/domain/entities/user.dart';
+import 'package:appmobi/services/auth_service.dart';
 
 class FailingWriteStorage extends FlutterSecureStorage {
   @override
