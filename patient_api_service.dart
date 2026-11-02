@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:dio/dio.dart';
 import 'auth_service.dart';
 
@@ -19,17 +20,41 @@ class _LocalPatientDataStore {
     'lien_he_khan_cap': '0909888777 (Chồng - Nguyễn Minh Quân)',
   };
 
+  static final Map<int, Map<String, dynamic>> _customProfiles = {};
+
   static Map<String, dynamic> syncedProfile() {
     final active = LocalAuthStore.activeUser;
     if (active != null) {
-      profile['id'] = int.tryParse(active.id) ?? 1;
+      final pid = int.tryParse(active.id) ?? 1;
+      final acc = LocalAuthStore.findAccount(active.phone);
+      if (pid != 1) {
+        if (!_customProfiles.containsKey(pid)) {
+          _customProfiles[pid] = {
+            'id': pid,
+            'ma_bn': active.patientCode,
+            'ho_ten': active.name,
+            'sdt': active.phone,
+            'email': active.email,
+            'ngay_sinh': acc?['birth_date'] ?? '2000-01-01',
+            'gioi_tinh': acc?['gender'] ?? 'Nam',
+            'dia_chi': 'Chưa cập nhật',
+            'so_cccd': '',
+            'so_the_bhyt': acc?['so_the_bhyt'] ?? '',
+            'nhom_mau': 'Chưa xác định',
+            'di_ung': 'Không có ghi nhận',
+            'benh_nen': 'Không có ghi nhận',
+            'lien_he_khan_cap': '',
+          };
+        }
+        return Map<String, dynamic>.from(_customProfiles[pid]!);
+      }
+      profile['id'] = 1;
       profile['ma_bn'] = active.patientCode;
       profile['ho_ten'] = active.name;
       profile['sdt'] = active.phone;
       if (active.email.isNotEmpty) {
         profile['email'] = active.email;
       }
-      final acc = LocalAuthStore.findAccount(active.phone);
       if (acc != null) {
         profile['ngay_sinh'] ??= acc['birth_date'];
         profile['gioi_tinh'] ??= acc['gender'];
@@ -113,6 +138,7 @@ class _LocalPatientDataStore {
   static final List<Map<String, dynamic>> appointments = [
     {
       'id': 101,
+      'patient_id': 1,
       'ma_lich_hen': 'LH2026103101',
       'chuyen_khoa_id': 1,
       'ten_chuyen_khoa': 'Khoa Nội Tổng Quát',
@@ -127,6 +153,7 @@ class _LocalPatientDataStore {
     },
     {
       'id': 100,
+      'patient_id': 1,
       'ma_lich_hen': 'LH2026101502',
       'chuyen_khoa_id': 1,
       'ten_chuyen_khoa': 'Khoa Nội Tổng Quát',
@@ -144,6 +171,7 @@ class _LocalPatientDataStore {
   static final List<Map<String, dynamic>> records = [
     {
       'id': 501,
+      'patient_id': 1,
       'ma_phieu': 'PK2026101501',
       'ngay_kham': '15/10/2026 09:30',
       'ten_bac_si': 'Nguyễn Văn Khoa',
@@ -209,6 +237,7 @@ class _LocalPatientDataStore {
   static final List<Map<String, dynamic>> labResults = [
     {
       'id': 701,
+      'patient_id': 1,
       'ma_phieu': 'XN2026101501',
       'ten_dich_vu': 'Tổng phân tích tế bào máu ngoại vi (Công thức máu)',
       'loai_dich_vu': 'Xét nghiệm Huyết học',
@@ -224,6 +253,7 @@ class _LocalPatientDataStore {
     },
     {
       'id': 702,
+      'patient_id': 1,
       'ma_phieu': 'CDHA2026101502',
       'ten_dich_vu': 'Chụp X-Quang ngực thẳng kỹ thuật số',
       'loai_dich_vu': 'Chẩn đoán hình ảnh',
@@ -242,6 +272,7 @@ class _LocalPatientDataStore {
   static final List<Map<String, dynamic>> invoices = [
     {
       'id': 801,
+      'patient_id': 1,
       'ma_hoa_don': 'HD2026101501',
       'loai_hoa_don': 'Viện phí Khám & Cận lâm sàng',
       'ngay_lap': '15/10/2026 10:35',
@@ -275,6 +306,7 @@ class _LocalPatientDataStore {
     },
     {
       'id': 802,
+      'patient_id': 1,
       'ma_hoa_don': 'HDT2026110201',
       'loai_hoa_don': 'Tạm ứng lịch khám ngày 02/11/2026',
       'ngay_lap': '30/10/2026 14:20',
@@ -299,6 +331,7 @@ class _LocalPatientDataStore {
   static final List<Map<String, dynamic>> notifications = [
     {
       'id': 901,
+      'patient_id': 1,
       'tieu_de': 'Nhắc lịch hẹn khám sắp tới',
       'noi_dung':
           'Bạn có lịch hẹn khám tại Khoa Nội Tổng Quát (P.101) với ThS.BS Nguyễn Văn Khoa vào lúc 08:30 ngày 02/11/2026.',
@@ -308,6 +341,7 @@ class _LocalPatientDataStore {
     },
     {
       'id': 902,
+      'patient_id': 1,
       'tieu_de': 'Đã có kết quả Xét nghiệm & X-Quang',
       'noi_dung':
           'Kết quả xét nghiệm máu và chụp X-Quang ngực thẳng của đợt khám PK2026101501 đã được cập nhật lên ứng dụng.',
@@ -317,6 +351,7 @@ class _LocalPatientDataStore {
     },
     {
       'id': 903,
+      'patient_id': 1,
       'tieu_de': 'Đơn thuốc DT2026101501 đã cấp phát',
       'noi_dung':
           'Kho dược đã hoàn tất cấp phát đơn thuốc DT2026101501. Chúc bạn mau chóng bình phục!',
@@ -329,6 +364,7 @@ class _LocalPatientDataStore {
   static final List<Map<String, dynamic>> feedbacks = [
     {
       'id': 1,
+      'patient_id': 1,
       'chu_de': 'Khám chữa bệnh & Bác sĩ',
       'diem_danh_gia': 5,
       'noi_dung':
@@ -341,6 +377,8 @@ class _LocalPatientDataStore {
 }
 
 class PatientApiService {
+  static final ValueNotifier<int> unreadCountNotifier = ValueNotifier<int>(0);
+
   final Dio _dio;
 
   PatientApiService({Dio? dio})
@@ -375,6 +413,19 @@ class PatientApiService {
     return error.toString();
   }
 
+  int _resolvePatientId(String token) {
+    if (token.startsWith('local-token-')) {
+      final parsed = int.tryParse(token.replaceFirst('local-token-', ''));
+      if (parsed != null) return parsed;
+    }
+    final active = LocalAuthStore.activeUser;
+    if (active != null) {
+      final parsed = int.tryParse(active.id);
+      if (parsed != null) return parsed;
+    }
+    return 1;
+  }
+
   Future<Map<String, dynamic>> getDashboard(String token) async {
     try {
       if (!token.startsWith('local-token-')) {
@@ -382,30 +433,42 @@ class PatientApiService {
           '/api/v1/mobile/patient/dashboard',
           options: _authOptions(token),
         );
-        return Map<String, dynamic>.from(res.data as Map);
+        final data = Map<String, dynamic>.from(res.data as Map);
+        final unread = (data['unread_notifications'] as int?) ?? 0;
+        unreadCountNotifier.value = unread;
+        return data;
       }
     } catch (_) {}
 
-    final upcoming = _LocalPatientDataStore.appointments
+    final currentPid = _resolvePatientId(token);
+    final userAppointments = _LocalPatientDataStore.appointments
+        .where((a) => (a['patient_id'] ?? 1) == currentPid)
+        .toList();
+    final upcoming = userAppointments
         .where((a) =>
             a['trang_thai'] != 'Đã hủy' && a['trang_thai'] != 'Đã hoàn thành')
         .toList();
     final unread = _LocalPatientDataStore.notifications
-        .where((n) => n['da_doc'] == 0 || n['da_doc'] == false)
+        .where((n) =>
+            (n['patient_id'] ?? 1) == currentPid &&
+            (n['da_doc'] == 0 || n['da_doc'] == false))
         .length;
+    unreadCountNotifier.value = unread;
     return {
       'success': true,
       'patient': _LocalPatientDataStore.syncedProfile(),
       'upcoming_appointment': upcoming.isNotEmpty ? upcoming.first : null,
-      'latest_vitals': {
-        'mach': 76,
-        'huyet_ap': '118/76',
-        'nhiet_do': 36.7,
-        'can_nang': 54.5,
-        'chieu_cao': 162,
-        'spo2': 98,
-        'ngay_do': '15/10/2026',
-      },
+      'latest_vitals': currentPid == 1
+          ? {
+              'mach': 76,
+              'huyet_ap': '118/76',
+              'nhiet_do': 36.7,
+              'can_nang': 54.5,
+              'chieu_cao': 162,
+              'spo2': 98,
+              'ngay_do': '15/10/2026',
+            }
+          : null,
       'unread_notifications': unread,
     };
   }
@@ -459,7 +522,9 @@ class PatientApiService {
         return list.map((e) => Map<String, dynamic>.from(e as Map)).toList();
       }
     } catch (_) {}
+    final currentPid = _resolvePatientId(token);
     return _LocalPatientDataStore.appointments
+        .where((a) => (a['patient_id'] ?? 1) == currentPid)
         .map((e) => Map<String, dynamic>.from(e))
         .toList();
   }
@@ -497,6 +562,7 @@ class PatientApiService {
       }
     }
 
+    final currentPid = _resolvePatientId(token);
     final spec = _LocalPatientDataStore.specialties.firstWhere(
       (s) => s['id'] == chuyenKhoaId,
       orElse: () => _LocalPatientDataStore.specialties.first,
@@ -510,6 +576,7 @@ class PatientApiService {
     final newId = 100 + _LocalPatientDataStore.appointments.length + 1;
     final newItem = {
       'id': newId,
+      'patient_id': currentPid,
       'ma_lich_hen': 'LH2026$newId',
       'chuyen_khoa_id': chuyenKhoaId,
       'ten_chuyen_khoa': spec['ten_chuyen_khoa'],
@@ -523,6 +590,17 @@ class PatientApiService {
       'trang_thai': 'Chờ tiếp nhận',
     };
     _LocalPatientDataStore.appointments.insert(0, newItem);
+    _LocalPatientDataStore.notifications.insert(0, {
+      'id': DateTime.now().millisecondsSinceEpoch % 100000,
+      'patient_id': currentPid,
+      'tieu_de': 'Xác nhận tiếp nhận lịch khám (${newItem['ma_lich_hen']})',
+      'noi_dung':
+          'Lịch khám tại ${spec['ten_chuyen_khoa']} (${doc['ho_ten']}) ngày $targetDate lúc $targetTime đã được tiếp nhận thành công.',
+      'loai': 'LICH_HEN',
+      'da_doc': 0,
+      'thoi_gian':
+          '${DateTime.now().day.toString().padLeft(2, '0')}/${DateTime.now().month.toString().padLeft(2, '0')}/${DateTime.now().year} ${DateTime.now().hour.toString().padLeft(2, '0')}:${DateTime.now().minute.toString().padLeft(2, '0')}',
+    });
     return {
       'success': true,
       'message': 'Đặt lịch khám thành công!',
@@ -565,6 +643,10 @@ class PatientApiService {
 
     for (final item in _LocalPatientDataStore.appointments) {
       if (item['id'] == appointmentId) {
+        final st = (item['trang_thai'] ?? '').toString();
+        if (st == 'Đã xác nhận' || st == 'Đã tiếp nhận' || st == 'Đã duyệt' || st == 'Đang chờ khám') {
+          throw Exception('Lịch khám đã được phê duyệt xác nhận nên không thể thay đổi thông tin hay dời lịch!');
+        }
         item['ngay_hen'] = targetDate;
         item['gio_hen'] = targetTime;
         if (lyDo != null && lyDo.isNotEmpty) item['ly_do'] = lyDo;
@@ -615,18 +697,26 @@ class PatientApiService {
       }
     } catch (_) {}
 
+    final currentPid = _resolvePatientId(token);
+    final userRecords = _LocalPatientDataStore.records
+        .where((r) => (r['patient_id'] ?? 1) == currentPid)
+        .toList();
+    final currentVitals = currentPid == 1
+        ? {
+            'mach': 76,
+            'huyet_ap': '118/76',
+            'nhiet_do': 36.7,
+            'can_nang': 54.5,
+            'chieu_cao': 162,
+            'spo2': 98,
+            'ngay_do': '15/10/2026',
+          }
+        : null;
     return {
       'success': true,
-      'records': _LocalPatientDataStore.records,
-      'latest_vitals': {
-        'mach': 76,
-        'huyet_ap': '118/76',
-        'nhiet_do': 36.7,
-        'can_nang': 54.5,
-        'chieu_cao': 162,
-        'spo2': 98,
-        'ngay_do': '15/10/2026',
-      },
+      'records': userRecords,
+      'vitals': currentVitals,
+      'latest_vitals': currentVitals,
     };
   }
 
@@ -685,7 +775,9 @@ class PatientApiService {
         return list.map((e) => Map<String, dynamic>.from(e as Map)).toList();
       }
     } catch (_) {}
+    final currentPid = _resolvePatientId(token);
     return _LocalPatientDataStore.labResults
+        .where((l) => (l['patient_id'] ?? 1) == currentPid)
         .map((e) => Map<String, dynamic>.from(e))
         .toList();
   }
@@ -700,10 +792,20 @@ class PatientApiService {
         return Map<String, dynamic>.from(res.data as Map);
       }
     } catch (_) {}
+    final currentPid = _resolvePatientId(token);
+    final userInvoices = _LocalPatientDataStore.invoices
+        .where((i) => (i['patient_id'] ?? 1) == currentPid)
+        .toList();
     final p = _LocalPatientDataStore.syncedProfile();
-    final hasBhyt = (p['so_the_bhyt'] ?? '').toString().isNotEmpty;
-    final bhytCode = (p['so_the_bhyt'] ?? p['bhyt'] ?? 'GD4797931100001').toString();
+    final bhytCode = (p['so_the_bhyt'] ?? p['bhyt'] ?? (currentPid == 1 ? 'GD4797931100001' : '')).toString();
     final hasBhyt = bhytCode.isNotEmpty;
+    final totalChuaThanhToan = userInvoices
+        .where((i) => i['trang_thai'] == 'Chưa thanh toán')
+        .fold<num>(0, (sum, i) => sum + (i['thuc_thu'] ?? i['thanh_tien'] ?? 0));
+    final totalDaThanhToan = userInvoices
+        .where((i) => i['trang_thai'] == 'Đã thanh toán')
+        .fold<num>(0, (sum, i) => sum + (i['thuc_thu'] ?? i['thanh_tien'] ?? 0));
+
     return {
       'success': true,
       'has_bhyt': hasBhyt,
@@ -711,14 +813,14 @@ class PatientApiService {
       'stats': {
         'has_bhyt': hasBhyt,
         'so_the_bhyt': bhytCode,
-        'tong_tien': 650000,
-        'tien_bhyt': 520000,
-        'da_thanh_toan': 90000,
-        'chua_thanh_toan': 40000,
-        'so_hoa_don_cho': 1,
-        'tong_so_hoa_don': 2,
+        'tong_tien': userInvoices.fold<num>(0, (sum, i) => sum + (i['tong_tien'] ?? 0)),
+        'tien_bhyt': userInvoices.fold<num>(0, (sum, i) => sum + (i['muc_bhyt_chi_tra'] ?? i['tien_bhyt'] ?? 0)),
+        'da_thanh_toan': totalDaThanhToan,
+        'chua_thanh_toan': totalChuaThanhToan,
+        'so_hoa_don_cho': userInvoices.where((i) => i['trang_thai'] == 'Chưa thanh toán').length,
+        'tong_so_hoa_don': userInvoices.length,
       },
-      'invoices': _LocalPatientDataStore.invoices,
+      'invoices': userInvoices,
     };
   }
 
@@ -731,12 +833,26 @@ class PatientApiService {
         );
         final data = Map<String, dynamic>.from(res.data as Map);
         final list = (data['notifications'] as List?) ?? [];
-        return list.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+        final result = list.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+        final unread = result.where((n) => n['da_xem'] != true && n['da_doc'] != 1).length;
+        unreadCountNotifier.value = unread;
+        return result;
       }
     } catch (_) {}
-    return _LocalPatientDataStore.notifications
-        .map((e) => Map<String, dynamic>.from(e))
+    final currentPid = _resolvePatientId(token);
+    final local = _LocalPatientDataStore.notifications
+        .where((n) => (n['patient_id'] ?? 1) == currentPid)
+        .map((e) {
+          final m = Map<String, dynamic>.from(e);
+          if (!m.containsKey('da_xem')) {
+            m['da_xem'] = (m['da_doc'] == 1 || m['da_doc'] == true);
+          }
+          return m;
+        })
         .toList();
+    final unread = local.where((n) => n['da_xem'] != true && n['da_doc'] != 1).length;
+    unreadCountNotifier.value = unread;
+    return local;
   }
 
   Future<void> markNotificationRead({
@@ -746,6 +862,12 @@ class PatientApiService {
     bool markAll = false,
   }) async {
     final targetId = markAll ? null : (notificationId ?? id);
+    if (markAll) {
+      unreadCountNotifier.value = 0;
+    } else if (unreadCountNotifier.value > 0) {
+      unreadCountNotifier.value--;
+    }
+
     try {
       if (!token.startsWith('local-token-')) {
         await _dio.post(
@@ -755,13 +877,13 @@ class PatientApiService {
           },
           options: _authOptions(token),
         );
-        return;
       }
     } catch (_) {}
 
     for (final n in _LocalPatientDataStore.notifications) {
       if (targetId == null || n['id'] == targetId) {
         n['da_doc'] = 1;
+        n['da_xem'] = true;
       }
     }
   }
@@ -809,36 +931,40 @@ class PatientApiService {
       }
     }
 
+    final currentPid = _resolvePatientId(token);
+    final targetMap = currentPid != 1
+        ? (_LocalPatientDataStore._customProfiles[currentPid] ??= _LocalPatientDataStore.syncedProfile())
+        : _LocalPatientDataStore.profile;
+
     if (body['ho_ten'] != null) {
-      _LocalPatientDataStore.profile['ho_ten'] = body['ho_ten'];
+      targetMap['ho_ten'] = body['ho_ten'];
     }
     if (body['ngay_sinh'] != null) {
-      _LocalPatientDataStore.profile['ngay_sinh'] = body['ngay_sinh'];
+      targetMap['ngay_sinh'] = body['ngay_sinh'];
     }
     if (body['gioi_tinh'] != null) {
-      _LocalPatientDataStore.profile['gioi_tinh'] = body['gioi_tinh'];
+      targetMap['gioi_tinh'] = body['gioi_tinh'];
     }
     if (body['dia_chi'] != null) {
-      _LocalPatientDataStore.profile['dia_chi'] = body['dia_chi'];
+      targetMap['dia_chi'] = body['dia_chi'];
     }
     if (body['cccd'] != null) {
-      _LocalPatientDataStore.profile['so_cccd'] = body['cccd'];
+      targetMap['so_cccd'] = body['cccd'];
     }
     if (body['bhyt'] != null) {
-      _LocalPatientDataStore.profile['so_the_bhyt'] = body['bhyt'];
+      targetMap['so_the_bhyt'] = body['bhyt'];
     }
     if (body['nhom_mau'] != null) {
-      _LocalPatientDataStore.profile['nhom_mau'] = body['nhom_mau'];
+      targetMap['nhom_mau'] = body['nhom_mau'];
     }
     if (body['di_ung'] != null) {
-      _LocalPatientDataStore.profile['di_ung'] = body['di_ung'];
+      targetMap['di_ung'] = body['di_ung'];
     }
     if (body['tien_su_benh'] != null) {
-      _LocalPatientDataStore.profile['benh_nen'] = body['tien_su_benh'];
+      targetMap['benh_nen'] = body['tien_su_benh'];
     }
     if (body['nguoi_than_sdt'] != null) {
-      _LocalPatientDataStore.profile['lien_he_khan_cap'] =
-          body['nguoi_than_sdt'];
+      targetMap['lien_he_khan_cap'] = body['nguoi_than_sdt'];
     }
     return 'Cập nhật hồ sơ y tế & thẻ BHYT thành công!';
   }
@@ -855,7 +981,9 @@ class PatientApiService {
         return list.map((e) => Map<String, dynamic>.from(e as Map)).toList();
       }
     } catch (_) {}
+    final currentPid = _resolvePatientId(token);
     return _LocalPatientDataStore.feedbacks
+        .where((f) => (f['patient_id'] ?? 1) == currentPid)
         .map((e) => Map<String, dynamic>.from(e))
         .toList();
   }
@@ -889,8 +1017,10 @@ class PatientApiService {
       }
     }
 
+    final currentPid = _resolvePatientId(token);
     _LocalPatientDataStore.feedbacks.insert(0, {
       'id': _LocalPatientDataStore.feedbacks.length + 1,
+      'patient_id': currentPid,
       'chu_de': topic,
       'diem_danh_gia': stars,
       'noi_dung': noiDung,
