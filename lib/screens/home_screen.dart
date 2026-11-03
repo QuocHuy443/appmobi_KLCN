@@ -7,9 +7,12 @@ import '../widgets/header_widget.dart';
 import '../widgets/quick_services_widget.dart';
 import '../widgets/upcoming_appointment_widget.dart';
 import '../widgets/vip_card_widget.dart';
+import 'auth_screen.dart';
 
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
+  const HomeScreen({super.key, this.refreshVersion = 0});
+
+  final int refreshVersion;
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -20,6 +23,17 @@ class _HomeScreenState extends State<HomeScreen> {
   String? _loadedToken;
   Map<String, dynamic>? _dashboardData;
   String? _error;
+
+  @override
+  void didUpdateWidget(covariant HomeScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.refreshVersion != widget.refreshVersion) {
+      final token = context.read<AuthViewModel>().currentUser?.token;
+      if (token != null && token.isNotEmpty) {
+        _fetchDashboard(token);
+      }
+    }
+  }
 
   @override
   void didChangeDependencies() {
@@ -41,13 +55,15 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _fetchDashboard(String token) async {
     try {
       final data = await _api.getDashboard(token);
-      if (!mounted) return;
+      if (!mounted || token != _loadedToken) return;
+      final profile = data['patient'];
+      if (profile is Map) context.read<AuthViewModel>().updatePatientProfile(token, Map<String,dynamic>.from(profile));
       setState(() {
         _dashboardData = data;
         _error = null;
       });
     } catch (e) {
-      if (!mounted) return;
+      if (!mounted || token != _loadedToken) return;
       setState(() {
         _error = e.toString().replaceFirst('Exception: ', '');
       });
@@ -58,7 +74,8 @@ class _HomeScreenState extends State<HomeScreen> {
     final user = context.read<AuthViewModel>().currentUser;
     if (user == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Vui lòng đăng nhập để xem danh sách lịch hẹn.')),
+        const SnackBar(
+            content: Text('Vui lòng đăng nhập để xem danh sách lịch hẹn.')),
       );
       return;
     }
@@ -82,7 +99,10 @@ class _HomeScreenState extends State<HomeScreen> {
               children: [
                 Text(
                   'Tất cả lịch hẹn khám (${appts.length})',
-                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.slate800),
+                  style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.slate800),
                 ),
                 const SizedBox(height: 12),
                 Expanded(
@@ -98,11 +118,13 @@ class _HomeScreenState extends State<HomeScreen> {
                               contentPadding: EdgeInsets.zero,
                               leading: CircleAvatar(
                                 backgroundColor: AppColors.medical50,
-                                child: const Icon(Icons.event_note, color: AppColors.medical600),
+                                child: const Icon(Icons.event_note,
+                                    color: AppColors.medical600),
                               ),
                               title: Text(
                                 '${a['khoa'] ?? 'Chuyên khoa'} • ${a['ngay_hen'] ?? ''} (${a['gio_hen_short'] ?? ''})',
-                                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                                style: const TextStyle(
+                                    fontWeight: FontWeight.bold, fontSize: 14),
                               ),
                               subtitle: Text(
                                 'BS: ${(a['bac_si'] != null && a['bac_si'].toString().isNotEmpty) ? a['bac_si'] : 'Phòng khám sắp xếp'}\nMã: ${a['ma_hen'] ?? ''} • Trạng thái: ${a['trang_thai'] ?? ''}',
@@ -135,9 +157,11 @@ class _HomeScreenState extends State<HomeScreen> {
         ? Map<String, dynamic>.from(patientMap!['vitals'] as Map)
         : null;
     final upcomingMap = _dashboardData?['upcoming_appointment'] is Map
-        ? Map<String, dynamic>.from(_dashboardData!['upcoming_appointment'] as Map)
+        ? Map<String, dynamic>.from(
+            _dashboardData!['upcoming_appointment'] as Map)
         : null;
     final unreadNotifs = (_dashboardData?['unread_notifications'] as int?) ?? 0;
+    final error = _error ?? (user == null ? context.watch<AuthViewModel>().errorMessage : null);
 
     return Column(
       children: [
@@ -160,7 +184,7 @@ class _HomeScreenState extends State<HomeScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  if (_error != null)
+                  if (error != null)
                     Container(
                       width: double.infinity,
                       margin: const EdgeInsets.only(bottom: 12),
@@ -171,10 +195,12 @@ class _HomeScreenState extends State<HomeScreen> {
                         border: Border.all(color: Colors.amber.shade200),
                       ),
                       child: Text(
-                        _error!,
-                        style: TextStyle(color: Colors.amber.shade900, fontSize: 12),
+                        error,
+                        style: TextStyle(
+                            color: Colors.amber.shade900, fontSize: 12),
                       ),
                     ),
+                  if (user == null && error != null) TextButton(onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AuthScreen())), child: const Text('Đăng nhập lại')),
                   VipCardWidget(
                     bhyt: patientMap?['bhyt']?.toString(),
                     nhomMau: patientMap?['nhom_mau']?.toString(),
@@ -192,7 +218,8 @@ class _HomeScreenState extends State<HomeScreen> {
                     children: [
                       const Text(
                         'Lịch khám sắp tới',
-                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                        style: TextStyle(
+                            fontSize: 16, fontWeight: FontWeight.bold),
                       ),
                       TextButton(
                         onPressed: _showAllAppointmentsDialog,

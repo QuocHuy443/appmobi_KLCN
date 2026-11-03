@@ -1,4 +1,6 @@
 import 'dart:convert';
+import 'dart:async';
+import 'session_events.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
@@ -13,6 +15,7 @@ class User {
   final String patientCode;
   final String role;
   final String token;
+  final bool profileComplete;
 
   const User({
     required this.id,
@@ -23,7 +26,13 @@ class User {
     required this.patientCode,
     required this.role,
     required this.token,
+    this.profileComplete = true,
   });
+
+  User copyWith({String? name, String? email, String? phone, bool? profileComplete}) => User(
+    id: id, accountId: accountId, name: name ?? this.name, email: email ?? this.email,
+    phone: phone ?? this.phone, patientCode: patientCode, role: role, token: token,
+    profileComplete: profileComplete ?? this.profileComplete);
 }
 
 abstract class AuthRepository {
@@ -49,178 +58,6 @@ class AuthRepositoryException implements Exception {
   String toString() => message;
 }
 
-class LocalAuthStore {
-  static User? activeUser;
-
-  static final Map<String, Map<String, dynamic>> _accounts = {
-    '0901234561': {
-      'account_id': 61,
-      'patient_id': 1,
-      'username': 'bn_1',
-      'phone': '0901234561',
-      'password': '123456',
-      'name': 'Trần Thị Hương',
-      'email': 'huong.tran@gmail.com',
-      'patient_code': 'BN0001',
-      'birth_date': '1992-05-14',
-      'gender': 'Nữ',
-      'so_the_bhyt': 'DN4797912345678',
-    },
-    '0901234562': {
-      'account_id': 62,
-      'patient_id': 2,
-      'username': 'bn_2',
-      'phone': '0901234562',
-      'password': '123456',
-      'name': 'Lê Hoàng Nam',
-      'email': 'nam.le@gmail.com',
-      'patient_code': 'BN0002',
-      'birth_date': '1988-11-20',
-      'gender': 'Nam',
-      'so_the_bhyt': '',
-    },
-    '0901234563': {
-      'account_id': 63,
-      'patient_id': 3,
-      'username': 'bn_3',
-      'phone': '0901234563',
-      'password': '123456',
-      'name': 'Phạm Minh Tuấn',
-      'email': 'tuan.pham@gmail.com',
-      'patient_code': 'BN0003',
-      'birth_date': '1995-03-08',
-      'gender': 'Nam',
-      'so_the_bhyt': 'DN4797988889999',
-    },
-  };
-
-  static int _nextId = 4;
-
-  static Map<String, dynamic>? findAccount(String identifier) {
-    final clean = identifier.trim().toLowerCase();
-    for (final entry in _accounts.values) {
-      if ((entry['phone'] as String).toLowerCase() == clean ||
-          (entry['username'] as String).toLowerCase() == clean ||
-          (entry['email'] as String).toLowerCase() == clean) {
-        return entry;
-      }
-    }
-    return null;
-  }
-
-  static Map<String, dynamic>? findByToken(String token) {
-    if (token.startsWith('local-token-')) {
-      final pid = int.tryParse(token.replaceFirst('local-token-', ''));
-      if (pid != null) {
-        for (final entry in _accounts.values) {
-          if (entry['patient_id'] == pid) return entry;
-        }
-      }
-    }
-    if (activeUser != null) {
-      final byPhone = findAccount(activeUser!.phone);
-      if (byPhone != null) return byPhone;
-    }
-    return _accounts['0901234561'];
-  }
-
-  static User loginLocal(String identifier, String password) {
-    final clean = identifier.trim();
-    if (clean.isEmpty || password.length < 6) {
-      throw const AuthRepositoryException(
-        'Tên đăng nhập hoặc mật khẩu không chính xác!',
-        statusCode: 401,
-        code: 'INVALID_CREDENTIALS',
-      );
-    }
-    final existing = findAccount(clean);
-    if (existing != null) {
-      final expectedPwd = existing['password'] as String;
-      if (password != expectedPwd && password != 'Password@123') {
-        throw const AuthRepositoryException(
-          'Tên đăng nhập hoặc mật khẩu không chính xác!',
-          statusCode: 401,
-          code: 'INVALID_CREDENTIALS',
-        );
-      }
-      final pid = existing['patient_id'] as int;
-      final user = User(
-        id: pid.toString(),
-        accountId: (existing['account_id'] as int).toString(),
-        name: existing['name'] as String,
-        email: existing['email'] as String,
-        phone: existing['phone'] as String,
-        patientCode: existing['patient_code'] as String,
-        role: 'BENHNHAN',
-        token: 'local-token-$pid',
-      );
-      activeUser = user;
-      return user;
-    }
-
-    final defaultAcc = _accounts['0901234561']!;
-    final user = User(
-      id: defaultAcc['patient_id'].toString(),
-      accountId: defaultAcc['account_id'].toString(),
-      name: defaultAcc['name'] as String,
-      email: defaultAcc['email'] as String,
-      phone: clean.startsWith('0') ? clean : (defaultAcc['phone'] as String),
-      patientCode: defaultAcc['patient_code'] as String,
-      role: 'BENHNHAN',
-      token: 'local-token-1',
-    );
-    activeUser = user;
-    return user;
-  }
-
-  static User registerLocal({
-    required String name,
-    required String phone,
-    required String birthDate,
-    required String gender,
-    required String password,
-    String email = '',
-  }) {
-    final cleanPhone = phone.trim();
-    if (_accounts.containsKey(cleanPhone)) {
-      throw const AuthRepositoryException(
-        'Số điện thoại này đã được đăng ký tài khoản!',
-        statusCode: 409,
-        code: 'ACCOUNT_EXISTS',
-      );
-    }
-    final pid = _nextId++;
-    final accId = 60 + pid;
-    final code = 'BN${pid.toString().padLeft(4, '0')}';
-    final record = {
-      'account_id': accId,
-      'patient_id': pid,
-      'username': cleanPhone,
-      'phone': cleanPhone,
-      'password': password,
-      'name': name.trim(),
-      'email': email.trim(),
-      'patient_code': code,
-      'birth_date': birthDate,
-      'gender': gender,
-      'so_the_bhyt': '',
-    };
-    _accounts[cleanPhone] = record;
-    final user = User(
-      id: pid.toString(),
-      accountId: accId.toString(),
-      name: record['name'] as String,
-      email: record['email'] as String,
-      phone: cleanPhone,
-      patientCode: code,
-      role: 'BENHNHAN',
-      token: 'local-token-$pid',
-    );
-    activeUser = user;
-    return user;
-  }
-}
-
 class AuthRepositoryImpl implements AuthRepository {
   static const _tokenKey = 'auth_token';
   static const _sessionKey = 'mobile_session_v1';
@@ -237,7 +74,6 @@ class AuthRepositoryImpl implements AuthRepository {
   final FlutterSecureStorage secureStorage;
   final Dio _dio;
   final DateTime Function() _now;
-  final bool _enableLocalFallback;
   Future<void> _queue = Future<void>.value();
 
   Future<T> _exclusive<T>(Future<T> Function() operation) {
@@ -251,8 +87,7 @@ class AuthRepositoryImpl implements AuthRepository {
     Dio? dio,
     DateTime Function()? now,
   })  : _dio = dio ?? Dio(BaseOptions(baseUrl: defaultBaseUrl)),
-        _now = now ?? DateTime.now,
-        _enableLocalFallback = dio == null {
+        _now = now ?? DateTime.now {
     _dio.options.connectTimeout = const Duration(seconds: 15);
     _dio.options.receiveTimeout = const Duration(seconds: 15);
     _dio.options.sendTimeout = const Duration(seconds: 15);
@@ -321,27 +156,10 @@ class AuthRepositoryImpl implements AuthRepository {
       }
       final expiry = _expiry(data);
       final user = _userFromResponse(data, token);
-      LocalAuthStore.activeUser = user;
       await _store(token, expiry);
       return user;
     } on DioException catch (error) {
-      if (_enableLocalFallback && error.response == null) {
-        final user = path == '/login'
-            ? LocalAuthStore.loginLocal(
-                (payload['identifier'] ?? '').toString(),
-                (payload['password'] ?? '').toString(),
-              )
-            : LocalAuthStore.registerLocal(
-                name: (payload['ho_ten'] ?? '').toString(),
-                phone: (payload['sdt'] ?? '').toString(),
-                birthDate: (payload['ngay_sinh'] ?? '').toString(),
-                gender: (payload['gioi_tinh'] ?? 'Nam').toString(),
-                password: (payload['password'] ?? '').toString(),
-                email: (payload['email'] ?? '').toString(),
-              );
-        await _store(user.token, _epoch + 43200);
-        return user;
-      }
+  
       throw _fromDio(error);
     }
   }
@@ -360,51 +178,16 @@ class AuthRepositoryImpl implements AuthRepository {
       await _clearSession();
       return null;
     }
-    if (_enableLocalFallback && token.startsWith('local-token-')) {
-      final acc = LocalAuthStore.findByToken(token);
-      if (acc != null) {
-        final user = User(
-          id: (acc['patient_id'] as int).toString(),
-          accountId: (acc['account_id'] as int).toString(),
-          name: acc['name'] as String,
-          email: acc['email'] as String,
-          phone: acc['phone'] as String,
-          patientCode: acc['patient_code'] as String,
-          role: 'BENHNHAN',
-          token: token,
-        );
-        LocalAuthStore.activeUser = user;
-        return user;
-      }
-    }
+
     try {
       final response =
           await _dio.get('/api/v1/mobile/auth/me', options: _bearer(token));
       final data = _asMap(response.data);
       final user = _userFromResponse(data, token);
-      LocalAuthStore.activeUser = user;
       await _store(token, _expiry(data));
       return user;
     } on DioException catch (error) {
-      if (_enableLocalFallback && error.response == null) {
-        final acc = LocalAuthStore.findByToken(token) ??
-            LocalAuthStore.findAccount('0901234561');
-        if (acc != null) {
-          final user = User(
-            id: (acc['patient_id'] as int).toString(),
-            accountId: (acc['account_id'] as int).toString(),
-            name: acc['name'] as String,
-            email: acc['email'] as String,
-            phone: acc['phone'] as String,
-            patientCode: acc['patient_code'] as String,
-            role: 'BENHNHAN',
-            token: token,
-          );
-          LocalAuthStore.activeUser = user;
-          return user;
-        }
-        return null;
-      }
+  
       final failure = _fromDio(error);
       if (failure.statusCode == 401 || failure.statusCode == 403) {
         await _clearSession();
@@ -420,14 +203,10 @@ class AuthRepositoryImpl implements AuthRepository {
   Future<void> logout() => _exclusive(_logout);
 
   Future<void> _logout() async {
-    LocalAuthStore.activeUser = null;
     final stored = await _readSession();
     if (stored == null) return;
-    final token = stored['token'] as String? ?? '';
-    if (_enableLocalFallback && token.startsWith('local-token-')) {
-      await _clearSession();
-      return;
-    }
+
+
     final pending = await _pending();
     if (!pending.any((item) => item['token'] == stored['token'])) {
       pending.add(stored);
@@ -440,9 +219,7 @@ class AuthRepositoryImpl implements AuthRepository {
     _checkEndpoint();
     await _flushRevocations();
     if ((await _pending()).any((item) => item['token'] == stored['token'])) {
-      if (_enableLocalFallback) {
-        return;
-      }
+  
       throw const AuthRepositoryException(
         'Đã đăng xuất trên thiết bị. Chưa kết nối được server để vô hiệu hóa token; sẽ thử lại khi có mạng. Token vẫn có hạn dùng.',
         code: 'LOGOUT_PENDING',
@@ -531,6 +308,7 @@ class AuthRepositoryImpl implements AuthRepository {
       patientCode: user['patient_code'] as String,
       role: 'BENHNHAN',
       token: token,
+      profileComplete: user['profile_complete'] == true,
     );
   }
 
@@ -676,7 +454,45 @@ class AuthViewModel extends ChangeNotifier {
   final AuthRepository _authRepository;
 
   AuthViewModel({required AuthRepository authRepository})
-      : _authRepository = authRepository;
+      : _authRepository = authRepository {
+    SessionEvents.rejected.addListener(_sessionRejected);
+  }
+
+  Map<String, dynamic> _profile = {};
+  Map<String, dynamic> get profile => Map.unmodifiable(_profile);
+
+  void updatePatientProfile(String token, Map<String, dynamic> profile) {
+    if (_currentUser?.token != token) return;
+    _profile = Map.from(profile);
+    _currentUser = _currentUser!.copyWith(name: profile['ho_ten']?.toString(),
+      email: profile['email']?.toString(), phone: profile['sdt']?.toString(),
+      profileComplete: profile['profile_complete'] == true);
+    notifyListeners();
+  }
+
+  void _sessionRejected() {
+    final event = SessionEvents.rejected.value;
+    if (event == null || _currentUser?.token != event.token) return;
+    if (event.profileRequired) {
+      _currentUser = _currentUser!.copyWith(profileComplete: false);
+      notifyListeners();
+      return;
+    }
+    ++_sessionOperation;
+    _currentUser = null;
+    _profile = {};
+    _isInitialized = true;
+    _isLoading = false;
+    _errorMessage = 'Phiên đăng nhập đã hết hạn hoặc bị vô hiệu hóa. Vui lòng đăng nhập lại.';
+    notifyListeners();
+    unawaited(_authRepository.logout().catchError((Object _) {}));
+  }
+
+  @override
+  void dispose() {
+    SessionEvents.rejected.removeListener(_sessionRejected);
+    super.dispose();
+  }
 
   bool _isLoading = false;
   bool _isInitialized = false;
@@ -774,6 +590,8 @@ class AuthViewModel extends ChangeNotifier {
     final operation = ++_sessionOperation;
     _setLoading(true);
     _currentUser = null;
+    _profile = {};
+    notifyListeners();
     try {
       await _authRepository.logout();
       if (operation != _sessionOperation) return;

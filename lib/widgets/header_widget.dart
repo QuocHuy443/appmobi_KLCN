@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:provider/provider.dart';
-import '../core/app_colors.dart';
-import '../services/auth_service.dart';
-import '../screens/auth_screen.dart';
-import '../screens/notifications_screen.dart';
+import 'package:appmobi/core/app_colors.dart';
+import 'package:appmobi/services/auth_service.dart';
+import 'package:appmobi/services/patient_api_service.dart';
+import 'package:appmobi/screens/auth_screen.dart';
+import 'package:appmobi/screens/notifications_screen.dart';
 
 class HeaderWidget extends StatelessWidget {
   final int unreadCount;
@@ -17,7 +18,8 @@ class HeaderWidget extends StatelessWidget {
   });
 
   String _initials(String name) {
-    final parts = name.trim().split(RegExp(r'\s+')).where((s) => s.isNotEmpty).toList();
+    final parts =
+        name.trim().split(RegExp(r'\s+')).where((s) => s.isNotEmpty).toList();
     if (parts.isEmpty) return 'BN';
     if (parts.length == 1) return parts.first.substring(0, 1).toUpperCase();
     return '${parts.first[0]}${parts.last[0]}'.toUpperCase();
@@ -26,7 +28,8 @@ class HeaderWidget extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final user = context.watch<AuthViewModel>().currentUser;
-    final displayName = user != null && user.name.isNotEmpty ? user.name : 'Khách vãng lai';
+    final displayName =
+        user != null && user.name.isNotEmpty ? user.name : 'Chưa đăng nhập';
     final subTitle = user != null && user.patientCode.isNotEmpty
         ? 'Mã BN: ${user.patientCode}'
         : 'Chạm để đăng nhập tài khoản';
@@ -52,6 +55,8 @@ class HeaderWidget extends StatelessWidget {
                   CircleAvatar(
                     radius: 22,
                     backgroundColor: AppColors.medical100,
+                    backgroundImage: PatientApiService.avatarUrl(context.watch<AuthViewModel>().profile['avatar']) == null ? null : NetworkImage(PatientApiService.avatarUrl(context.watch<AuthViewModel>().profile['avatar'])!),
+                    onBackgroundImageError: PatientApiService.avatarUrl(context.watch<AuthViewModel>().profile['avatar']) == null ? null : (_, __) {},
                     child: Text(
                       _initials(displayName),
                       style: const TextStyle(
@@ -77,7 +82,8 @@ class HeaderWidget extends StatelessWidget {
                         ),
                         Text(
                           subTitle,
-                          style: TextStyle(fontSize: 12, color: Colors.grey.shade500),
+                          style: TextStyle(
+                              fontSize: 12, color: Colors.grey.shade500),
                         ),
                       ],
                     ),
@@ -94,49 +100,79 @@ class HeaderWidget extends StatelessWidget {
                 onPressed: () {
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(
-                      content: Text('Tổng đài Cấp cứu & CSKH H2T Care: 1900 6868 (Trực 24/7)'),
+                      content: Text(
+                          'Tổng đài Cấp cứu & CSKH H2T Care: 1900 6868 (Trực 24/7)'),
                     ),
                   );
                 },
               ),
               Stack(
-                alignment: Alignment.center,
+                clipBehavior: Clip.none,
                 children: [
                   IconButton(
-                    icon: const FaIcon(FontAwesomeIcons.bell, size: 22, color: AppColors.slate800),
+                    icon: const FaIcon(FontAwesomeIcons.bell,
+                        size: 22, color: AppColors.slate800),
+                    tooltip: 'Thông báo',
                     onPressed: () async {
                       await Navigator.push(
                         context,
-                        MaterialPageRoute(builder: (_) => const NotificationsScreen()),
+                        MaterialPageRoute(
+                            builder: (_) => const NotificationsScreen()),
                       );
                       onRefresh?.call();
                     },
                   ),
-                  if (unreadCount > 0)
-                    Positioned(
-                      right: 8,
-                      top: 8,
-                      child: Container(
-                        padding: const EdgeInsets.all(4),
-                        decoration: const BoxDecoration(
-                          color: Colors.red,
-                          shape: BoxShape.circle,
-                        ),
-                        constraints: const BoxConstraints(
-                          minWidth: 16,
-                          minHeight: 16,
-                        ),
-                        child: Text(
-                          unreadCount > 99 ? '99+' : unreadCount.toString(),
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 10,
-                            fontWeight: FontWeight.bold,
+                  ValueListenableBuilder<int>(
+                    valueListenable: PatientApiService.unreadCountNotifier,
+                    builder: (context, liveCount, _) {
+                      final count = user == null
+                          ? 0
+                          : (PatientApiService.notificationToken == user.token
+                              ? liveCount
+                              : unreadCount);
+                      if (count <= 0) return const SizedBox.shrink();
+
+                      return Positioned(
+                        right: 6,
+                        top: 6,
+                        child: IgnorePointer(
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 5, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: AppColors.rose500,
+                              borderRadius: BorderRadius.circular(10),
+                              border:
+                                  Border.all(color: Colors.white, width: 1.5),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.red.withValues(alpha: 0.35),
+                                  blurRadius: 4,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ],
+                            ),
+                            constraints: const BoxConstraints(
+                              minWidth: 18,
+                              minHeight: 18,
+                            ),
+                            child: Center(
+                              child: Text(
+                                count > 99 ? '99+' : count.toString(),
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w800,
+                                  height: 1.0,
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                            ),
                           ),
-                          textAlign: TextAlign.center,
                         ),
-                      ),
-                    ),
+                      );
+                    },
+                  ),
                 ],
               ),
             ],

@@ -84,12 +84,6 @@ class _AuthScreenState extends State<AuthScreen> {
     }
   }
 
-  void _quickFillAndLogin(String phone, String password) {
-    _identifierController.text = phone;
-    _passwordController.text = password;
-    _submit();
-  }
-
   void _switchMode(AuthMode mode) {
     if (_mode == mode) return;
     context.read<AuthViewModel>().clearError();
@@ -276,10 +270,6 @@ class _AuthScreenState extends State<AuthScreen> {
                                     value: 'Nữ',
                                     child: Text('Nữ'),
                                   ),
-                                  DropdownMenuItem(
-                                    value: 'Khác',
-                                    child: Text('Khác'),
-                                  ),
                                 ],
                                 onChanged: (value) {
                                   if (value != null) {
@@ -300,12 +290,12 @@ class _AuthScreenState extends State<AuthScreen> {
                               icon: Icons.phone_android_rounded,
                               keyboardType: TextInputType.phone,
                               textInputAction: TextInputAction.next,
-                              validator: (value) =>
-                                  value == null || value.trim().isEmpty
-                                      ? _isRegistering
-                                          ? 'Vui lòng nhập số điện thoại'
-                                          : 'Vui lòng nhập tên đăng nhập hoặc số điện thoại'
-                                      : null,
+                              validator: (value) => value == null ||
+                                      value.trim().isEmpty
+                                  ? _isRegistering
+                                      ? 'Vui lòng nhập số điện thoại'
+                                      : 'Vui lòng nhập tên đăng nhập hoặc số điện thoại'
+                                  : null,
                             ),
                             const SizedBox(height: 18),
                             if (_isRegistering) ...[
@@ -416,98 +406,6 @@ class _AuthScreenState extends State<AuthScreen> {
                               ),
                       ),
 
-                      if (!_isRegistering) ...[
-                        const SizedBox(height: 20),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 14,
-                            vertical: 12,
-                          ),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(16),
-                            border: Border.all(color: AppColors.medical100),
-                          ),
-                          child: Column(
-                            children: [
-                              const Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(
-                                    Icons.flash_on_rounded,
-                                    size: 16,
-                                    color: AppColors.medical600,
-                                  ),
-                                  SizedBox(width: 4),
-                                  Text(
-                                    'Đăng nhập nhanh tài khoản mẫu (1 chạm):',
-                                    style: TextStyle(
-                                      color: AppColors.slate700,
-                                      fontSize: 12.5,
-                                      fontWeight: FontWeight.w700,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 8),
-                              Wrap(
-                                spacing: 8,
-                                runSpacing: 8,
-                                alignment: WrapAlignment.center,
-                                children: [
-                                  ActionChip(
-                                    backgroundColor: AppColors.medical50,
-                                    side: const BorderSide(
-                                      color: AppColors.medical200,
-                                    ),
-                                    avatar: const Icon(
-                                      Icons.verified_user_rounded,
-                                      size: 16,
-                                      color: AppColors.medical700,
-                                    ),
-                                    label: const Text(
-                                      'BN có BHYT (0901234561)',
-                                      style: TextStyle(
-                                        color: AppColors.medical700,
-                                        fontWeight: FontWeight.w700,
-                                        fontSize: 12,
-                                      ),
-                                    ),
-                                    onPressed: () => _quickFillAndLogin(
-                                      '0901234561',
-                                      '123456',
-                                    ),
-                                  ),
-                                  ActionChip(
-                                    backgroundColor: AppColors.slate100,
-                                    side: const BorderSide(
-                                      color: AppColors.slate200,
-                                    ),
-                                    avatar: const Icon(
-                                      Icons.person_rounded,
-                                      size: 16,
-                                      color: AppColors.slate700,
-                                    ),
-                                    label: const Text(
-                                      'BN 2 (0901234562)',
-                                      style: TextStyle(
-                                        color: AppColors.slate800,
-                                        fontWeight: FontWeight.w700,
-                                        fontSize: 12,
-                                      ),
-                                    ),
-                                    onPressed: () => _quickFillAndLogin(
-                                      '0901234562',
-                                      '123456',
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-
                       if (authViewModel.errorMessage != null &&
                           authViewModel.errorMessage!.isNotEmpty) ...[
                         const SizedBox(height: 16),
@@ -545,8 +443,9 @@ class _AuthScreenState extends State<AuthScreen> {
                       ],
 
                       const SizedBox(height: 22),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
+                      Wrap(
+                        alignment: WrapAlignment.center,
+                        crossAxisAlignment: WrapCrossAlignment.center,
                         children: [
                           Text(
                             _isRegistering

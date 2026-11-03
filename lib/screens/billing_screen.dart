@@ -1,3 +1,4 @@
+import '../widgets/request_error.dart';
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:provider/provider.dart';
@@ -38,20 +39,28 @@ class _BillingScreenState extends State<BillingScreen> {
   }
 
   Future<void> _loadBilling(String token) async {
-    setState(() => _isLoading = true);
+    setState(() { _isLoading = true; _error = null; });
     try {
       final data = await _apiService.getBilling(token);
-      if (!mounted) return;
+      if (!mounted || token != _lastToken) return;
       setState(() {
         if (data['stats'] is Map) {
           _stats = Map<String, dynamic>.from(data['stats'] as Map);
+        } else {
+          final hasBhyt = data['has_bhyt'] == true ||
+              (data['so_the_bhyt'] != null &&
+                  data['so_the_bhyt'].toString().isNotEmpty);
+          _stats = {
+            'has_bhyt': hasBhyt,
+            'so_the_bhyt': data['so_the_bhyt'] ?? '',
+          };
         }
         _invoices = List<Map<String, dynamic>>.from(data['invoices'] ?? []);
         _isLoading = false;
       });
-    } catch (_) {
-      if (!mounted) return;
-      setState(() => _isLoading = false);
+    } catch (e) {
+      if (!mounted || token != _lastToken) return;
+      setState(() { _isLoading = false; _error = '$e'; });
     }
   }
 
@@ -71,77 +80,31 @@ class _BillingScreenState extends State<BillingScreen> {
     return '${buffer.toString()} ₫';
   }
 
-  void _showPaymentGuideDialog(Map<String, dynamic> inv) {
-    final code = 'HD-${inv['id'].toString().padLeft(4, '0')}';
-    final amount = _formatVnd(inv['thanh_tien']);
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(
-          'Thanh toán hóa đơn $code',
-          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Số tiền thực thu (sau trừ BHYT): $amount',
-              style: const TextStyle(
-                fontWeight: FontWeight.bold,
-                color: AppColors.rose500,
-              ),
-            ),
-            const SizedBox(height: 12),
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: AppColors.medical50,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: const Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Thông tin chuyển khoản VietQR:',
-                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-                  ),
-                  SizedBox(height: 6),
-                  Text('• Ngân hàng: Vietcombank - CN TP.HCM', style: TextStyle(fontSize: 12)),
-                  Text('• Số tài khoản: 1029384756', style: TextStyle(fontSize: 12)),
-                  Text('• Chủ TK: PHONG KHAM DA KHOA H2T', style: TextStyle(fontSize: 12)),
-                ],
-              ),
-            ),
-            const SizedBox(height: 10),
-            Text(
-              'Nội dung CK: $code THANH TOAN VIEN PHI\nHoặc xuất trình mã $code tại Quầy Thu Ngân Tầng 1.',
-              style: const TextStyle(fontSize: 12, color: AppColors.slate600),
-            ),
-          ],
-        ),
-        actions: [
-          ElevatedButton(
-            onPressed: () => Navigator.pop(ctx),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.medical600,
-              foregroundColor: Colors.white,
-            ),
-            child: const Text('Đã hiểu'),
-          ),
-        ],
-      ),
-    );
+  bool _paymentLoading = false;
+  String? _error;
+  Future<void> _showPaymentGuideDialog(Map<String, dynamic> inv) async {
+    final token = context.read<AuthViewModel>().currentUser?.token;
+    if (_paymentLoading || token == null) return;
+    setState(() => _paymentLoading = true);
+    try {
+      final data = await _apiService.paymentInstructions(token, inv['id'] as int);
+      if (!mounted || context.read<AuthViewModel>().currentUser?.token != token) return;
+      final payment = data['payment'] as Map;
+      await showDialog<void>(context: context, builder: (ctx) => AlertDialog(
+        title: const Text('Hướng dẫn thanh toán'),
+        content: Text('Hóa đơn: ${payment['ma_hoa_don']}\nSố tiền: ${_formatVnd(payment['amount'])}\n\n${data['message']}'),
+        actions: [TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Đã hiểu'))]));
+    } catch (e) { if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString().replaceFirst('Exception: ', '')))); }
+    finally { if (mounted) setState(() => _paymentLoading = false); }
   }
-
   @override
   Widget build(BuildContext context) {
     final user = context.watch<AuthViewModel>().currentUser;
     final unpaidList = _invoices
-        .where((inv) => (inv['trang_thai'] ?? '') != 'Đã thanh toán')
+        .where((inv) => (inv['trang_thai'] ?? '') == 'Chưa thanh toán')
         .toList();
     final paidList = _invoices
-        .where((inv) => (inv['trang_thai'] ?? '') == 'Đã thanh toán')
+        .where((inv) => (inv['trang_thai'] ?? '') != 'Chưa thanh toán')
         .toList();
 
     return DefaultTabController(
@@ -179,14 +142,15 @@ class _BillingScreenState extends State<BillingScreen> {
             unselectedLabelColor: AppColors.slate400,
             indicatorColor: AppColors.medical600,
             indicatorWeight: 3,
-            labelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+            labelStyle:
+                const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
             tabs: [
               Tab(text: 'Cần thanh toán (${unpaidList.length})'),
               Tab(text: 'Lịch sử (${paidList.length})'),
             ],
           ),
         ),
-        body: user == null
+        body: _error != null && user != null ? Center(child: RequestError(message: _error!, onRetry: () => _loadBilling(user.token))) : user == null
             ? Center(
                 child: Padding(
                   padding: const EdgeInsets.all(24),
@@ -202,13 +166,15 @@ class _BillingScreenState extends State<BillingScreen> {
                       const Text(
                         'Vui lòng đăng nhập để tra cứu hóa đơn viện phí & mức khấu trừ BHYT 80%.',
                         textAlign: TextAlign.center,
-                        style: TextStyle(fontSize: 14, color: AppColors.slate600),
+                        style:
+                            TextStyle(fontSize: 14, color: AppColors.slate600),
                       ),
                       const SizedBox(height: 16),
                       ElevatedButton(
                         onPressed: () {
                           Navigator.of(context).push(
-                            MaterialPageRoute(builder: (_) => const AuthScreen()),
+                            MaterialPageRoute(
+                                builder: (_) => const AuthScreen()),
                           );
                         },
                         style: ElevatedButton.styleFrom(
@@ -329,14 +295,33 @@ class _BillingScreenState extends State<BillingScreen> {
     );
   }
 
-  Widget _buildInvoiceCard(Map<String, dynamic> inv, {required bool isPending}) {
-    final code = 'HD-${inv['id'].toString().padLeft(4, '0')}';
+  Widget _buildInvoiceCard(Map<String, dynamic> inv,
+      {required bool isPending}) {
+    final code = (inv['ma_hoa_don'] ??
+            inv['ma_hd'] ??
+            'HD-${inv['id'].toString().padLeft(4, '0')}')
+        .toString();
     final date = (inv['ngay_lap'] ?? '').toString();
     final status = (inv['trang_thai'] ?? '').toString();
-    final items = List<Map<String, dynamic>>.from(inv['chi_tiet'] ?? []);
-    final tongTien = inv['tong_tien'] ?? 0;
-    final tienBhyt = inv['tien_bhyt'] ?? 0;
-    final thanhTien = inv['thanh_tien'] ?? 0;
+    final items =
+        List<Map<String, dynamic>>.from(inv['chi_tiet'] ?? inv['items'] ?? []);
+    final dynamic rawTongTien = inv['tong_tien'] ?? 0;
+    final dynamic rawTienBhyt = inv['tien_bhyt'] ?? inv['muc_bhyt_chi_tra'];
+    final dynamic rawThanhTien = inv['thanh_tien'] ?? inv['thuc_thu'];
+
+    final num tongTien = (rawTongTien is num)
+        ? rawTongTien
+        : (num.tryParse(rawTongTien?.toString() ?? '0') ?? 0);
+    final num tienBhyt = (rawTienBhyt != null)
+        ? ((rawTienBhyt is num)
+            ? rawTienBhyt
+            : (num.tryParse(rawTienBhyt.toString()) ?? 0))
+        : 0;
+    final num thanhTien = (rawThanhTien != null)
+        ? ((rawThanhTien is num)
+            ? rawThanhTien
+            : (num.tryParse(rawThanhTien.toString()) ?? 0))
+        : (tongTien - tienBhyt);
 
     return Container(
       padding: const EdgeInsets.all(20),
@@ -355,7 +340,8 @@ class _BillingScreenState extends State<BillingScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
                   color: isPending
                       ? AppColors.amber500.withValues(alpha: 0.12)
@@ -367,7 +353,8 @@ class _BillingScreenState extends State<BillingScreen> {
                   style: TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.bold,
-                    color: isPending ? AppColors.amber500 : AppColors.emerald500,
+                    color:
+                        isPending ? AppColors.amber500 : AppColors.emerald500,
                   ),
                 ),
               ),
@@ -387,13 +374,22 @@ class _BillingScreenState extends State<BillingScreen> {
             ),
           ),
           const Divider(height: 24, color: AppColors.slate200),
-          ...items.map((item) => Padding(
-                padding: const EdgeInsets.only(bottom: 8),
-                child: _buildFeeRow(
-                  '${item['ten_khoan_muc']} (x${item['so_luong']})',
-                  _formatVnd(item['thanh_tien']),
-                ),
-              )),
+          ...items.map((item) {
+            final name = (item['ten_khoan_muc'] ??
+                    item['ten_dich_vu'] ??
+                    item['ten_khoan_thu'] ??
+                    'Dịch vụ y tế')
+                .toString();
+            final qty = item['so_luong'] ?? 1;
+            final itemTotal = item['thanh_tien'] ?? item['don_gia'] ?? 0;
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: _buildFeeRow(
+                '$name (x$qty)',
+                _formatVnd(itemTotal),
+              ),
+            );
+          }),
           const Divider(height: 20, color: AppColors.slate100),
           _buildFeeRow('Tổng chi phí gốc', _formatVnd(tongTien)),
           const SizedBox(height: 6),
@@ -430,7 +426,7 @@ class _BillingScreenState extends State<BillingScreen> {
               width: double.infinity,
               height: 46,
               child: ElevatedButton.icon(
-                onPressed: () => _showPaymentGuideDialog(inv),
+                onPressed: _paymentLoading ? null : () => _showPaymentGuideDialog(inv),
                 icon: const FaIcon(
                   FontAwesomeIcons.qrcode,
                   size: 16,

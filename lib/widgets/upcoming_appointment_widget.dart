@@ -1,8 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import '../core/app_colors.dart';
-import '../services/auth_service.dart';
-import '../services/patient_api_service.dart';
 import '../screens/appointment_screen.dart';
 
 class UpcomingAppointmentWidget extends StatelessWidget {
@@ -19,7 +16,7 @@ class UpcomingAppointmentWidget extends StatelessWidget {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: Text('Chi tiết lịch hẹn ${appt['ma_hen'] ?? ''}'),
+        title: Text('Chi tiết lịch hẹn ${(appt['ma_lich_hen'] ?? appt['ma_hen']) ?? ''}'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -28,9 +25,9 @@ class UpcomingAppointmentWidget extends StatelessWidget {
             _detailLine('Bác sĩ:', (appt['bac_si'] != null && appt['bac_si'].toString().isNotEmpty) ? appt['bac_si'].toString() : 'Phòng khám điều phối'),
             _detailLine('Phòng khám:', appt['ten_phong']?.toString() ?? 'Quầy tiếp đón phân bổ'),
             _detailLine('Ngày hẹn:', appt['ngay_hen']?.toString() ?? ''),
-            _detailLine('Giờ khám:', appt['gio_hen_short']?.toString() ?? ''),
+            _detailLine('Giờ khám:', (appt['gio_hen_short'] ?? appt['gio_hen'])?.toString() ?? ''),
             _detailLine('Trạng thái:', appt['trang_thai']?.toString() ?? ''),
-            _detailLine('Lý do khám:', appt['ly_do']?.toString() ?? ''),
+            _detailLine('Lý do khám:', (appt['ly_do_kham'] ?? appt['ly_do'])?.toString() ?? ''),
           ],
         ),
         actions: [
@@ -64,130 +61,10 @@ class UpcomingAppointmentWidget extends StatelessWidget {
     );
   }
 
-  void _showManageSheet(BuildContext context, Map<String, dynamic> appt) {
-    final user = context.read<AuthViewModel>().currentUser;
-    if (user == null) return;
-    final api = PatientApiService();
-    final apptId = appt['id'] as int?;
-    if (apptId == null) return;
-
-    DateTime selectedDate = DateTime.tryParse(appt['ngay_hen']?.toString() ?? '') ?? DateTime.now().add(const Duration(days: 1));
-    String selectedTime = appt['gio_hen_short']?.toString() ?? '08:30';
-    final times = ['07:30', '08:00', '08:30', '09:00', '09:30', '10:00', '10:30', '13:30', '14:00', '14:30', '15:00', '15:30', '16:00'];
-
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setSheetState) {
-          final dateStr = '${selectedDate.year}-${selectedDate.month.toString().padLeft(2, '0')}-${selectedDate.day.toString().padLeft(2, '0')}';
-          return Padding(
-            padding: EdgeInsets.fromLTRB(20, 20, 20, MediaQuery.of(ctx).viewInsets.bottom + 20),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Đổi / Hủy lịch hẹn (${appt['ma_hen'] ?? ''})',
-                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.slate800),
-                ),
-                const SizedBox(height: 16),
-                ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  leading: const Icon(Icons.calendar_month, color: AppColors.medical600),
-                  title: Text('Ngày hẹn mới: $dateStr'),
-                  trailing: TextButton(
-                    onPressed: () async {
-                      final picked = await showDatePicker(
-                        context: ctx,
-                        initialDate: selectedDate.isBefore(DateTime.now()) ? DateTime.now() : selectedDate,
-                        firstDate: DateTime.now(),
-                        lastDate: DateTime.now().add(const Duration(days: 30)),
-                      );
-                      if (picked != null) {
-                        setSheetState(() => selectedDate = picked);
-                      }
-                    },
-                    child: const Text('Chọn ngày'),
-                  ),
-                ),
-                const Text('Chọn giờ hẹn mới:', style: TextStyle(fontWeight: FontWeight.w600)),
-                const SizedBox(height: 8),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: times.map((t) {
-                    final sel = t == selectedTime;
-                    return ChoiceChip(
-                      label: Text(t),
-                      selected: sel,
-                      onSelected: (_) => setSheetState(() => selectedTime = t),
-                      selectedColor: AppColors.medical100,
-                    );
-                  }).toList(),
-                ),
-                const SizedBox(height: 20),
-                Row(
-                  children: [
-                    Expanded(
-                      child: OutlinedButton.icon(
-                        icon: const Icon(Icons.cancel_outlined, color: Colors.red),
-                        label: const Text('Hủy lịch hẹn', style: TextStyle(color: Colors.red)),
-                        onPressed: () async {
-                          try {
-                            final msg = await api.cancelAppointment(
-                              token: user.token,
-                              appointmentId: apptId,
-                            );
-                            if (!ctx.mounted) return;
-                            Navigator.pop(ctx);
-                            ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
-                            onChanged?.call();
-                          } catch (e) {
-                            if (!ctx.mounted) return;
-                            ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
-                          }
-                        },
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: ElevatedButton.icon(
-                        style: ElevatedButton.styleFrom(backgroundColor: AppColors.medical600),
-                        icon: const Icon(Icons.save_outlined, color: Colors.white),
-                        label: const Text('Lưu đổi lịch', style: TextStyle(color: Colors.white)),
-                        onPressed: () async {
-                          try {
-                            final msg = await api.rescheduleAppointment(
-                              token: user.token,
-                              appointmentId: apptId,
-                              ngayHen: dateStr,
-                              gioHen: selectedTime,
-                            );
-                            if (!ctx.mounted) return;
-                            Navigator.pop(ctx);
-                            ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
-                            onChanged?.call();
-                          } catch (e) {
-                            if (!ctx.mounted) return;
-                            ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
-                          }
-                        },
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          );
-        },
-      ),
-    );
+  Future<void> _showManageSheet(BuildContext context, Map<String, dynamic> appt) async {
+    await Navigator.push(context, MaterialPageRoute(builder: (_) => const AppointmentScreen(initialTab: 1)));
+    if (context.mounted) onChanged?.call();
   }
-
   @override
   Widget build(BuildContext context) {
     if (appointment == null) {
@@ -240,7 +117,7 @@ class UpcomingAppointmentWidget extends StatelessWidget {
     final docName = (appt['bac_si'] != null && appt['bac_si'].toString().isNotEmpty)
         ? appt['bac_si'].toString()
         : 'Bác sĩ chuyên khoa';
-    final timeStr = (appt['gio_hen_short'] ?? '08:30').toString();
+    final timeStr = ((appt['gio_hen_short'] ?? appt['gio_hen']) ?? '').toString();
     final statusStr = (appt['trang_thai'] ?? 'Chờ xác nhận').toString();
 
     return Container(

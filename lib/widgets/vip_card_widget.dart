@@ -126,7 +126,7 @@ class VipCardWidget extends StatelessWidget {
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: const Text(
-                        'BHYT 80%',
+                        'Có BHYT',
                         style: TextStyle(
                           color: AppColors.medical100,
                           fontSize: 10,

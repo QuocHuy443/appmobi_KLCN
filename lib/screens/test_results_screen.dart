@@ -1,261 +1,63 @@
-import 'package:flutter/material.dart';
-import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../core/app_colors.dart';
+import '../core/patient_format.dart';
 import '../services/auth_service.dart';
 import '../services/patient_api_service.dart';
+import '../widgets/request_error.dart';
 import 'auth_screen.dart';
 
 class TestResultsScreen extends StatefulWidget {
   const TestResultsScreen({super.key});
-
   @override
-  State<TestResultsScreen> createState() => _TestResultsScreenState();
+  State<TestResultsScreen> createState()=>_TestResultsScreenState();
 }
-
 class _TestResultsScreenState extends State<TestResultsScreen> {
-  final PatientApiService _apiService = PatientApiService();
-  String? _lastToken;
-  bool _isLoading = false;
-  List<Map<String, dynamic>> _items = [];
-
+  final _api=PatientApiService();
+  String? _token,_error;
+  bool _loading=false,_imageLoading=false;
+  List<Map<String,dynamic>> _items=[];
   @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    final token = context.watch<AuthViewModel>().currentUser?.token;
-    if (token != _lastToken) {
-      _lastToken = token;
-      if (token != null && token.isNotEmpty) {
-        _loadResults(token);
-      } else {
-        setState(() => _items = []);
-      }
-    }
+  void didChangeDependencies(){super.didChangeDependencies();final token=context.watch<AuthViewModel>().currentUser?.token;if(token!=_token){_token=token;_items=[];_error=null;if(token!=null)_load(token);}}
+  Future<void> _load(String token)async{
+    setState((){_loading=true;_error=null;});
+    try{final items=await _api.getLabResults(token);if(!mounted||_token!=token)return;setState((){_items=items;_loading=false;});}
+    catch(e){if(mounted&&_token==token)setState((){_error='$e';_loading=false;});}
   }
-
-  Future<void> _loadResults(String token) async {
-    setState(() => _isLoading = true);
-    try {
-      final list = await _apiService.getLabResults(token);
-      if (!mounted) return;
-      setState(() {
-        _items = list;
-        _isLoading = false;
-      });
-    } catch (_) {
-      if (!mounted) return;
-      setState(() => _isLoading = false);
-    }
+  Future<void> _image(Map<String,dynamic> item)async{
+    if(_imageLoading||_token==null)return;
+    final token=_token!;setState(()=>_imageLoading=true);
+    try{final bytes=await _api.getLabImage(token,item['id'] as int);if(!mounted||_token!=token)return;
+      await showDialog<void>(context:context,builder:(ctx)=>Dialog(child:Column(mainAxisSize:MainAxisSize.min,children:[
+        Padding(padding:const EdgeInsets.all(12),child:Text('${item['ten_dich_vu']}')),
+        Flexible(child:InteractiveViewer(minScale:0.5,maxScale:5,child:Image.memory(bytes,errorBuilder:(_,__,___)=>const Padding(padding:EdgeInsets.all(24),child:Text('Không đọc được ảnh kết quả.'))))),
+        TextButton(onPressed:()=>Navigator.pop(ctx),child:const Text('Đóng')),
+      ])));
+    }catch(e){if(mounted&&_token==token)ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text(e.toString().replaceFirst('Exception: ',''))));}
+    finally{if(mounted)setState(()=>_imageLoading=false);}
   }
-
   @override
-  Widget build(BuildContext context) {
-    final user = context.watch<AuthViewModel>().currentUser;
-
-    return Scaffold(
-      backgroundColor: AppColors.slate50,
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0.5,
-        leading: IconButton(
-          icon: const FaIcon(
-            FontAwesomeIcons.arrowLeft,
-            color: AppColors.slate800,
-            size: 18,
-          ),
-          onPressed: () => Navigator.pop(context),
-        ),
-        title: const Text(
-          'Kết Quả Xét Nghiệm & CĐHA',
-          style: TextStyle(
-            color: AppColors.slate800,
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        actions: [
-          if (user != null)
-            IconButton(
-              onPressed: () => _loadResults(user.token),
-              icon: const Icon(Icons.refresh, color: AppColors.medical600),
-            ),
-        ],
-      ),
-      body: user == null
-          ? Center(
-              child: Padding(
-                padding: const EdgeInsets.all(24),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const FaIcon(
-                      FontAwesomeIcons.flaskVial,
-                      size: 46,
-                      color: AppColors.medical600,
-                    ),
-                    const SizedBox(height: 14),
-                    const Text(
-                      'Vui lòng đăng nhập để xem Kết quả Xét nghiệm & Chẩn đoán hình ảnh từ cơ sở dữ liệu.',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(fontSize: 14, color: AppColors.slate600),
-                    ),
-                    const SizedBox(height: 16),
-                    ElevatedButton(
-                      onPressed: () {
-                        Navigator.of(context).push(
-                          MaterialPageRoute(builder: (_) => const AuthScreen()),
-                        );
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.medical600,
-                        foregroundColor: Colors.white,
-                      ),
-                      child: const Text('Đăng nhập ngay'),
-                    ),
-                  ],
-                ),
-              ),
-            )
-          : (_isLoading
-              ? const Center(child: CircularProgressIndicator())
-              : (_items.isEmpty
-                  ? const Center(
-                      child: Text(
-                        'Chưa có kết quả xét nghiệm / cận lâm sàng nào.',
-                        style: TextStyle(color: AppColors.slate500, fontSize: 14),
-                      ),
-                    )
-                  : ListView.separated(
-                      padding: const EdgeInsets.all(20),
-                      itemCount: _items.length,
-                      separatorBuilder: (_, __) => const SizedBox(height: 14),
-                      itemBuilder: (context, index) {
-                        final item = _items[index];
-                        return _buildLabCard(item);
-                      },
-                    ))),
-    );
-  }
-
-  Widget _buildLabCard(Map<String, dynamic> item) {
-    final serviceName = (item['ten_dich_vu'] ?? 'Xét nghiệm').toString();
-    final groupName = (item['loai_dich_vu'] ?? 'Cận lâm sàng').toString();
-    final resultText = (item['ket_qua'] ?? 'Đang chờ kết quả').toString();
-    final status = (item['trang_thai'] ?? 'Đã có kết quả').toString();
-    final examTime = (item['thoi_gian_kham'] ?? '').toString();
-    final doctor = (item['bac_si_chi_dinh'] ?? 'Bác sĩ').toString();
-    final technician = (item['nguoi_thuc_hien'] ?? 'KTV Xét nghiệm').toString();
-    final diagnosis = (item['chan_doan'] ?? '').toString();
-    final isCompleted = status.toLowerCase().contains('kết quả') ||
-        status.toLowerCase().contains('hoàn thành');
-
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.slate200),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(
-                  color: AppColors.medical50,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Text(
-                  groupName,
-                  style: const TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.medical600,
-                  ),
-                ),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(
-                  color: isCompleted
-                      ? AppColors.emerald500.withValues(alpha: 0.12)
-                      : AppColors.amber500.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Text(
-                  status,
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.bold,
-                    color: isCompleted ? AppColors.emerald500 : AppColors.amber500,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Text(
-            serviceName,
-            style: const TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-              color: AppColors.slate800,
-            ),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            'Ngày chỉ định: $examTime • BS: $doctor',
-            style: const TextStyle(fontSize: 12, color: AppColors.slate500),
-          ),
-          if (diagnosis.isNotEmpty) ...[
-            const SizedBox(height: 4),
-            Text(
-              'Chẩn đoán: $diagnosis',
-              style: const TextStyle(fontSize: 12, color: AppColors.slate600),
-            ),
+  Widget build(BuildContext context)=>Scaffold(backgroundColor:AppColors.slate50,
+    appBar:AppBar(title:const Text('Kết quả xét nghiệm & CĐHA'),actions:[if(_token!=null)IconButton(onPressed:_loading?null:()=>_load(_token!),icon:const Icon(Icons.refresh))]),
+    body:_token==null?Center(child:Column(mainAxisSize:MainAxisSize.min,children:[const Text('Đăng nhập để xem kết quả xét nghiệm.'),FilledButton(onPressed:()=>Navigator.push(context,MaterialPageRoute(builder:(_)=>const AuthScreen())),child:const Text('Đăng nhập'))])):
+      RefreshIndicator(onRefresh:()=>_load(_token!),child:ListView(physics:const AlwaysScrollableScrollPhysics(),padding:const EdgeInsets.all(20),children:[
+        if(_loading)const LinearProgressIndicator(),if(_error!=null)RequestError(message:_error!,onRetry:()=>_load(_token!)),
+        if(!_loading&&_error==null&&_items.isEmpty)const Padding(padding:EdgeInsets.all(24),child:Text('Chưa có kết quả đã được bác sĩ duyệt.')),
+        ..._items.map((item){final cls=item['cls'] is Map?item['cls'] as Map:item;final measurements=cls['chi_so'];return Card(child:ExpansionTile(
+          title:Text('${item['ten_dich_vu']??item['ten']??''}',style:const TextStyle(fontWeight:FontWeight.bold)),
+          subtitle:Text('${item['loai_dich_vu']??item['loai']??''}\n${patientDate(item['thoi_gian_kham'])} • ${item['trang_thai']??''}'),
+          childrenPadding:const EdgeInsets.all(16),expandedCrossAxisAlignment:CrossAxisAlignment.start,
+          children:[Text('Phiếu khám: ${item['ma_phieu']??''}'),Text('Bác sĩ chỉ định: ${item['bac_si_chi_dinh']??''}'),
+            if(item['chan_doan']!=null)Text('Chẩn đoán: ${item['chan_doan']}'),
+            const Divider(),SelectableText('${item['ket_qua']??'Chưa có nội dung kết quả'}'),
+            if(cls['don_vi']!=null)Text('Đơn vị: ${cls['don_vi']}'),
+            if(cls['khoang_tham_chieu']!=null)Text('Khoảng tham chiếu: ${cls['khoang_tham_chieu']}'),
+            if(cls['ket_luan']!=null)Text('Kết luận: ${cls['ket_luan']}'),
+            if(measurements is List)...measurements.whereType<Map>().map((m)=>Padding(padding:const EdgeInsets.only(top:8),child:Text('${m['ten']??m['ten_chi_so']??''}: ${m['gia_tri']??m['ket_qua']??''} ${m['don_vi']??''} • Tham chiếu: ${m['khoang_tham_chieu']??''}'))),
+            Text('Thực hiện: ${item['nguoi_thuc_hien']??item['bac_si_thuc_hien']??''}'),
+            if(item['file_endpoint']!=null)TextButton.icon(onPressed:_imageLoading?null:()=>_image(item),icon:const Icon(Icons.image),label:Text(_imageLoading?'Đang tải ảnh...':'Xem ảnh kết quả')),
           ],
-          const Divider(height: 20),
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: AppColors.slate50,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: AppColors.slate100),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Kết luận / Chỉ số xét nghiệm:',
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.slate700,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  resultText,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.medical600,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  'Thực hiện bởi: $technician',
-                  style: const TextStyle(fontSize: 11, color: AppColors.slate400),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+        ));}),
+      ])),
+  );
 }

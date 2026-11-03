@@ -1,3 +1,5 @@
+Thông tin cấu trúc và tích hợp hiện tại: [CAU_TRUC_PROJECT.md](CAU_TRUC_PROJECT.md). API bệnh nhân không dùng dữ liệu mẫu khi lỗi kết nối. Các tài khoản và mô tả backend dưới đây chỉ có hiệu lực nếu backend đã được chuẩn bị tương ứng.
+
 # 🏥 ỨNG DỤNG DI ĐỘNG BỆNH NHÂN — H2T HEALTHCARE (`appmobi_KLCN-main`)
 
 Ứng dụng di động dành riêng cho **Bệnh nhân** thuộc đề tài Khóa luận Chuyên ngành **Hệ thống Quản lý Phòng khám Đa khoa H2T Healthcare**, sử dụng chung cơ sở dữ liệu **Microsoft SQL Server (`quan_ly_phong_kham`)** với hệ thống Website (`KLCN_QuanLyPhongKhamDaKhoa-main`).
@@ -39,11 +41,11 @@
      - Tab *Lịch sử khám & Đơn thuốc*: Xem chi tiết từng đợt khám, chẩn đoán của bác sĩ, kết quả cận lâm sàng, toa thuốc chi tiết và 2 nút chọn **"Mua tại bệnh viện"** / **"Tự mua ngoài"**.
      - Tab *Chỉ số sinh tồn*: Hiển thị Nhịp tim, Huyết áp, Cân nặng & Chiều cao, Nhiệt độ cơ thể từ bảng `chi_so_sinh_ton`.
    - **Màn hình Kết quả Xét nghiệm & CĐHA (`test_results_screen.dart`)**: Mới hoàn toàn — hiển thị danh sách phiếu xét nghiệm máu, siêu âm, X-quang, chỉ số kết luận và tên Kỹ thuật viên thực hiện.
-   - **Màn hình Thanh toán Viện phí & BHYT (`billing_screen.dart`)**: Chia 2 tab *Cần thanh toán* và *Lịch sử*, hiển thị chi tiết từng dịch vụ, mức giảm trừ **80% BHYT**, số tiền thực thu và hướng dẫn thanh toán VietQR.
+   - **Màn hình Thanh toán Viện phí & BHYT (`billing_screen.dart`)**: Chia 2 tab *Cần thanh toán* và *Lịch sử*, hiển thị chi tiết từng dịch vụ, mức giảm trừ BHYT do API trả về, số tiền thực thu và hướng dẫn thanh toán VietQR.
    - **Màn hình Thông báo Y tế (`notifications_screen.dart`)**: Chia 3 tab (*Tất cả*, *Chưa đọc*, *Lịch khám & Y tế*), bấm vào thông báo hoặc nút *"Đánh dấu đã đọc"* để cập nhật trạng thái lên SQL Server.
    - **Màn hình Cá nhân & Hồ sơ Y tế (`profile_screen.dart`)**: Bổ sung biểu mẫu **Cập nhật Hồ sơ Y tế & Thẻ BHYT** (CCCD, BHYT, Nhóm máu, Dị ứng, Bệnh nền) và biểu mẫu **Đánh giá & Góp ý dịch vụ 5 sao**.
 3. **Tái cấu trúc & Làm gọn thư mục dự án (`lib/`)**:
-   - Gom gọn toàn bộ code trong `lib/` thành **4 thư mục phẳng** (`core/`, `services/`, `screens/`, `widgets/`), loại bỏ các thư mục con lồng nhau chỉ chứa 1 file và ẩn các thư mục hệ thống trong VS Code.
+   - Luồng từ `lib/main.dart` dùng các màn hình phẳng trong `lib/screens/`. Các bộ `domain/`, `data/`, `presentation/` và màn hình thư mục con vẫn được giữ; xem [cấu trúc thực tế](CAU_TRUC_PROJECT.md). Script chạy không xóa mã nguồn.
    - Tích hợp sẵn cấu hình Flutter SDK (`D:\flutter_windows_3.47.9-stable\flutter`) và script chạy tự động `run_app.bat`.
 
 ---
@@ -66,7 +68,7 @@ lib/
 │   ├── appointment_screen.dart         # Màn hình Đặt lịch khám, Đổi lịch, Hủy lịch
 │   ├── medical_records_screen.dart     # Màn hình Hồ sơ bệnh án EMR, Đơn thuốc & Sinh hiệu
 │   ├── test_results_screen.dart        # Màn hình Kết quả Xét nghiệm & Chẩn đoán hình ảnh
-│   ├── billing_screen.dart             # Màn hình Thanh toán viện phí & Khấu trừ 80% BHYT
+│   ├── billing_screen.dart             # Màn hình Thanh toán viện phí & BHYT
 │   ├── notifications_screen.dart       # Màn hình Thông báo y tế & Nhắc lịch khám
 │   └── profile_screen.dart             # Màn hình Cá nhân, Cập nhật BHYT & Đánh giá 5 sao
 └── widgets/                            # 4. Các khối giao diện con trên Trang chủ

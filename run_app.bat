@@ -7,33 +7,6 @@ if exist "D:\flutter_windows_3.47.9-stable\flutter\bin\flutter.bat" (
   set "FLUTTER_CMD=flutter"
 )
 
-REM Tu dong xoa cac thu muc va file cu bi trung lap trong lib/
-for %%D in (
-  "lib\data"
-  "lib\domain"
-  "lib\presentation"
-  "lib\core\constants"
-  "lib\core\di"
-  "lib\core\theme"
-  "lib\screens\appointment"
-  "lib\screens\auth"
-  "lib\screens\billing"
-  "lib\screens\home"
-  "lib\screens\medical_records"
-  "lib\screens\notifications"
-  "lib\screens\profile"
-  "lib\screens\test_results"
-) do (
-  if exist "%%~D" rmdir /s /q "%%~D" 2>nul
-)
-for %%F in (
-  "lib\widgets\custom_button.dart"
-  "lib\widgets\notification_badge_widget.dart"
-  "lib\widgets\qr_modal_widget.dart"
-) do (
-  if exist "%%~F" del /f /q "%%~F" 2>nul
-)
-
 REM Tu dong khoi dong Backend Web neu co tren may
 if exist "D:\KLCN_QuanLyPhongKhamDaKhoa-main\KLCN_QuanLyPhongKhamDaKhoa-main\app.py" (
   netstat -ano | findstr ":5000 " | findstr "LISTENING" >nul 2>&1
