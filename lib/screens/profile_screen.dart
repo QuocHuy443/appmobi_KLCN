@@ -82,6 +82,116 @@ class _ProfileScreenState extends State<ProfileScreen> {
     if (mounted && _token != null) _load(_token!);
   }
 
+  Future<void> _showChangePasswordDialog(User user) async {
+    final oldController = TextEditingController();
+    final newController = TextEditingController();
+    bool busy = false;
+    String? errorMsg;
+
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: const Text(
+            'Đổi mật khẩu tài khoản',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          ),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: oldController,
+                  enabled: !busy,
+                  obscureText: true,
+                  decoration: const InputDecoration(
+                    labelText: 'Mật khẩu hiện tại',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: newController,
+                  enabled: !busy,
+                  obscureText: true,
+                  decoration: const InputDecoration(
+                    labelText: 'Mật khẩu mới (tối thiểu 6 ký tự)',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                if (errorMsg != null) ...[
+                  const SizedBox(height: 10),
+                  Text(
+                    errorMsg!,
+                    style: const TextStyle(
+                      color: Colors.red,
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: busy ? null : () => Navigator.pop(ctx),
+              child: const Text('Hủy'),
+            ),
+            FilledButton(
+              onPressed: busy
+                  ? null
+                  : () async {
+                      setDialogState(() {
+                        busy = true;
+                        errorMsg = null;
+                      });
+                      try {
+                        final identifier = user.phone.isNotEmpty
+                            ? user.phone
+                            : (_profile['username'] ?? user.email).toString();
+                        final newPass = newController.text;
+                        final res = await _api.changePassword(
+                          identifier: identifier,
+                          currentPassword: oldController.text,
+                          newPassword: newPass,
+                        );
+                        if (!ctx.mounted) return;
+                        Navigator.pop(ctx);
+                        if (!mounted) return;
+                        await context
+                            .read<AuthViewModel>()
+                            .login(identifier, newPass);
+                        if (!mounted) return;
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            backgroundColor: AppColors.medical600,
+                            content: Text(
+                              (res['message'] ?? 'Đổi mật khẩu thành công!')
+                                  .toString(),
+                            ),
+                          ),
+                        );
+                      } catch (e) {
+                        setDialogState(() {
+                          busy = false;
+                          errorMsg =
+                              e.toString().replaceFirst('Exception: ', '');
+                        });
+                      }
+                    },
+              child: Text(busy ? 'Đang lưu...' : 'Lưu mật khẩu mới'),
+            ),
+          ],
+        ),
+      ),
+    );
+    oldController.dispose();
+    newController.dispose();
+  }
+
   Widget _buildInfoRow({
     required IconData icon,
     required String label,
@@ -636,6 +746,23 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           style: TextStyle(fontSize: 11.5)),
                       trailing: const Icon(Icons.chevron_right, size: 20),
                       onTap: () => _open(const NotificationsScreen()),
+                    ),
+                    const Divider(height: 1, indent: 56),
+                    ListTile(
+                      leading: const CircleAvatar(
+                        radius: 17,
+                        backgroundColor: Color(0xFFF1F5F9),
+                        child: Icon(Icons.lock_reset,
+                            size: 19, color: AppColors.slate700),
+                      ),
+                      title: const Text(
+                        'Đổi mật khẩu tài khoản',
+                        style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600),
+                      ),
+                      subtitle: const Text('Cập nhật mật khẩu đăng nhập bảo mật',
+                          style: TextStyle(fontSize: 11.5)),
+                      trailing: const Icon(Icons.chevron_right, size: 20),
+                      onTap: () => _showChangePasswordDialog(user),
                     ),
                   ],
                 ),

@@ -98,4 +98,73 @@ void main() {
     await request;
     expect(PatientApiService.unreadCountNotifier.value, 0);
   });
+
+  test('public endpoints and guest booking-meta work without Bearer token',
+      () async {
+    adapter.respond = (req) => {
+          'success': true,
+          'path': req.path,
+          'departments': [
+            {'id': 1, 'ten_khoa': 'Nội'}
+          ],
+          'departments_pricing': [
+            {'id': 1, 'ten_khoa': 'Nội', 'services': []}
+          ],
+          'articles': [
+            {'id': 1, 'slug': 'bai-1', 'title': 'Bài 1'}
+          ],
+          'article': {'id': 1, 'slug': 'bai-1', 'title': 'Bài 1'},
+        };
+    final home = await api.getPublicHome();
+    final pricing = await api.getPublicPricing();
+    final articles = await api.getPublicArticles(category: 'cam-nang-y-te');
+    final detail = await api.getPublicArticleDetail('bai-1');
+    final meta = await api.getBookingMeta(date: '2026-11-10', chuyenKhoaId: 1);
+
+    expect(home['departments'], isNotEmpty);
+    expect(pricing['departments_pricing'], isNotEmpty);
+    expect(articles['articles'], isNotEmpty);
+    expect(detail['article']['slug'], 'bai-1');
+    expect(meta['departments'], isNotEmpty);
+    for (final call in adapter.calls) {
+      expect(call.headers['Authorization'], isNull);
+    }
+  });
+
+  test('password recovery waits for delivery and shows backend setup errors',
+      () async {
+    adapter.status = 503;
+    adapter.respond = (_) => {
+          'success': false,
+          'error_code': 'RECOVERY_NOT_READY',
+          'message': 'Chức năng khôi phục mật khẩu chưa được kích hoạt.'
+        };
+    await expectLater(
+      api.sendForgotPasswordOtp('  person@example.com  '),
+      throwsA(predicate((error) => error
+          .toString()
+          .contains('Chức năng khôi phục mật khẩu chưa được kích hoạt.'))),
+    );
+    expect(adapter.calls.single.path,
+        '/api/v1/mobile/auth/forgot-password/send-otp');
+    expect(adapter.calls.single.receiveTimeout, const Duration(seconds: 45));
+    expect(adapter.calls.single.headers['Authorization'], isNull);
+
+    adapter.status = 200;
+    adapter.respond = (_) => {
+          'success': true,
+          'message': 'Đổi mật khẩu thành công.',
+        };
+    expect(
+      await api.resetForgotPassword(
+        identifier: 'person@example.com',
+        otpCode: '123456',
+        newPassword: 'new-password',
+      ),
+      'Đổi mật khẩu thành công.',
+    );
+    expect(
+        adapter.calls.last.path, '/api/v1/mobile/auth/forgot-password/reset');
+    expect(adapter.calls.last.receiveTimeout, const Duration(seconds: 45));
+  });
 }

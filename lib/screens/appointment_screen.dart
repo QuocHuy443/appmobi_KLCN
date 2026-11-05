@@ -185,7 +185,19 @@ class _AppointmentScreenState extends State<AppointmentScreen> {
     if (changed == true && mounted && _token != null) _load(_token!);
   }
 
-  void _showDetailDialog(Map<String, dynamic> a) {
+  Future<void> _showDetailDialog(Map<String, dynamic> initialAppt) async {
+    Map<String, dynamic> a = initialAppt;
+    final token = _token;
+    final apptId = (initialAppt['id'] as num?)?.toInt();
+    if (token != null && apptId != null) {
+      try {
+        final fresh = await _api.getAppointmentDetail(token, apptId);
+        if (fresh.isNotEmpty) {
+          a = {...initialAppt, ...fresh};
+        }
+      } catch (_) {}
+    }
+    if (!mounted) return;
     final code = (a['ma_lich_hen'] ?? a['ma_hen'] ?? '').toString();
     final dept =
         (a['ten_khoa'] ?? a['khoa'] ?? a['ten_chuyen_khoa'] ?? '').toString();
@@ -570,43 +582,47 @@ class _AppointmentScreenState extends State<AppointmentScreen> {
             ],
           ),
         ),
-        body: _token == null
-            ? Center(
-                child: Padding(
-                  padding: const EdgeInsets.all(24),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const FaIcon(
-                        FontAwesomeIcons.calendarPlus,
-                        size: 46,
-                        color: AppColors.medical600,
+        body: TabBarView(
+          children: [
+            AppointmentBookingForm(
+              initialDepartmentId: widget.initialDepartmentId,
+              initialDoctorId: widget.initialDoctorId,
+              onSaved: () {
+                if (_token != null) _load(_token!);
+              },
+            ),
+            _token == null
+                ? Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(24),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const FaIcon(
+                            FontAwesomeIcons.calendarPlus,
+                            size: 46,
+                            color: AppColors.medical600,
+                          ),
+                          const SizedBox(height: 14),
+                          const Text(
+                            'Vui lòng đăng nhập để xem và quản lý lịch hẹn của bạn.',
+                            textAlign: TextAlign.center,
+                          ),
+                          const SizedBox(height: 14),
+                          FilledButton(
+                            onPressed: () => Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => const AuthScreen(),
+                              ),
+                            ),
+                            child: const Text('Đăng nhập'),
+                          ),
+                        ],
                       ),
-                      const SizedBox(height: 14),
-                      const Text(
-                        'Vui lòng đăng nhập để đặt và quản lý lịch hẹn.',
-                        textAlign: TextAlign.center,
-                      ),
-                      const SizedBox(height: 14),
-                      FilledButton(
-                        onPressed: () => Navigator.push(
-                          context,
-                          MaterialPageRoute(builder: (_) => const AuthScreen()),
-                        ),
-                        child: const Text('Đăng nhập'),
-                      ),
-                    ],
-                  ),
-                ),
-              )
-            : TabBarView(
-                children: [
-                  AppointmentBookingForm(
-                    initialDepartmentId: widget.initialDepartmentId,
-                    initialDoctorId: widget.initialDoctorId,
-                    onSaved: () => _load(_token!),
-                  ),
-                  RefreshIndicator(
+                    ),
+                  )
+                : RefreshIndicator(
                     onRefresh: () => _load(_token!),
                     child: ListView(
                       physics: const AlwaysScrollableScrollPhysics(),

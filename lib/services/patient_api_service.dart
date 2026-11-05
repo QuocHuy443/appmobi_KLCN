@@ -511,4 +511,91 @@ class PatientApiService {
       throw Exception(_extractError(e));
     }
   }
+
+  Future<Map<String, dynamic>> getAppointmentDetail(
+    String token,
+    int appointmentId,
+  ) async {
+    try {
+      final res = await _dio.get(
+        '/api/v1/mobile/patient/appointments/$appointmentId',
+        options: _authOptions(token),
+      );
+      final data = Map<String, dynamic>.from(res.data as Map);
+      if (data['appointment'] is Map) {
+        return Map<String, dynamic>.from(data['appointment'] as Map);
+      }
+      return data;
+    } on DioException catch (e) {
+      throw Exception(_extractError(e));
+    }
+  }
+
+  Future<Map<String, dynamic>> exportBillingCsv(String token) async {
+    try {
+      final res = await _dio.get(
+        '/api/v1/mobile/patient/billing/export-csv',
+        options: _authOptions(token),
+      );
+      return Map<String, dynamic>.from(res.data as Map);
+    } on DioException catch (e) {
+      throw Exception(_extractError(e));
+    }
+  }
+
+  Future<Map<String, dynamic>> sendForgotPasswordOtp(String identifier) async {
+    try {
+      final res = await _dio.post(
+        '/api/v1/mobile/auth/forgot-password/send-otp',
+        data: {'identifier': identifier.trim()},
+        options: Options(receiveTimeout: const Duration(seconds: 45)),
+      );
+      return Map<String, dynamic>.from(res.data as Map);
+    } on DioException catch (e) {
+      throw Exception(_extractError(e));
+    }
+  }
+
+  Future<String> resetForgotPassword({
+    required String identifier,
+    required String otpCode,
+    required String newPassword,
+  }) async {
+    try {
+      final res = await _dio.post(
+        '/api/v1/mobile/auth/forgot-password/reset',
+        data: {
+          'identifier': identifier.trim(),
+          'otp_code': otpCode.trim(),
+          'new_password': newPassword,
+        },
+        options: Options(receiveTimeout: const Duration(seconds: 45)),
+      );
+      final data = Map<String, dynamic>.from(res.data as Map);
+      return (data['message'] as String?) ??
+          'Đặt lại mật khẩu thành công. Vui lòng đăng nhập.';
+    } on DioException catch (e) {
+      throw Exception(_extractError(e));
+    }
+  }
+
+  Future<Map<String, dynamic>> changePassword({
+    required String identifier,
+    required String currentPassword,
+    required String newPassword,
+  }) async {
+    try {
+      final res = await _dio.post(
+        '/api/v1/mobile/auth/change-password',
+        data: {
+          'identifier': identifier.trim(),
+          'current_password': currentPassword,
+          'new_password': newPassword,
+        },
+      );
+      return Map<String, dynamic>.from(res.data as Map);
+    } on DioException catch (e) {
+      throw Exception(_extractError(e));
+    }
+  }
 }

@@ -26,6 +26,7 @@ class _HomeScreenState extends State<HomeScreen> {
   String? _loadedToken;
   Map<String, dynamic>? _dashboardData;
   Map<String, dynamic>? _publicHomeData;
+  bool _loadingPublic = true;
   String? _error;
 
   int _selectedTabIndex = 0;
@@ -84,14 +85,25 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _fetchPublicHome() async {
+    if (mounted) {
+      setState(() {
+        _loadingPublic = true;
+      });
+    }
     try {
       final data = await _api.getPublicHome();
       if (!mounted) return;
       setState(() {
         _publicHomeData = data;
+        _loadingPublic = false;
       });
     } catch (_) {
       // Giữ trang chủ hoạt động mượt ngay cả khi chưa kết nối được máy chủ
+      if (mounted) {
+        setState(() {
+          _loadingPublic = false;
+        });
+      }
     }
   }
 
@@ -203,6 +215,7 @@ class _HomeScreenState extends State<HomeScreen> {
     required List<Map<String, dynamic>> departments,
     required List<Map<String, dynamic>> doctors,
     required List<Map<String, dynamic>> articles,
+    required List<Map<String, dynamic>> feedbacks,
     required Map<String, dynamic>? upcomingMap,
   }) {
     final activeBanner = banners.isNotEmpty ? banners.first : null;
@@ -747,7 +760,25 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 ],
               ),
-              if (departments.isNotEmpty)
+              if (departments.isEmpty)
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: AppColors.slate200),
+                  ),
+                  child: Text(
+                    _loadingPublic
+                        ? 'Đang tải danh sách chuyên khoa...'
+                        : 'Chưa có chuyên khoa hoạt động.',
+                    style: const TextStyle(
+                      fontSize: 12.5,
+                      color: AppColors.slate500,
+                    ),
+                  ),
+                )
+              else
                 ...departments.take(3).map((dep) {
                   final depId = (dep['id'] as num?)?.toInt();
                   return Container(
@@ -803,6 +834,122 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
         const SizedBox(height: 14),
         AppSlideFade(
+          delay: const Duration(milliseconds: 350),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Expanded(
+                    child: Text(
+                      'Đội ngũ bác sĩ chuyên khoa',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.slate800,
+                      ),
+                    ),
+                  ),
+                  TextButton(
+                    onPressed: () => setState(() => _selectedTabIndex = 2),
+                    child: const Text('Xem tất cả'),
+                  ),
+                ],
+              ),
+              if (doctors.isEmpty)
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: AppColors.slate200),
+                  ),
+                  child: Text(
+                    _loadingPublic
+                        ? 'Đang tải danh sách bác sĩ...'
+                        : 'Chưa có thông tin bác sĩ.',
+                    style: const TextStyle(
+                      fontSize: 12.5,
+                      color: AppColors.slate500,
+                    ),
+                  ),
+                )
+              else
+                ...doctors.take(3).map((doc) {
+                  final docId = (doc['id'] as num?)?.toInt();
+                  final depId = (doc['chuyen_khoa_id'] as num?)?.toInt();
+                  final displayName =
+                      (doc['ten_hien_thi'] ?? doc['ho_ten'] ?? 'Bác sĩ chuyên khoa')
+                          .toString();
+                  final depName =
+                      (doc['ten_khoa'] ?? doc['chuyen_khoa'] ?? 'Đa khoa')
+                          .toString();
+                  final avatarUrl = PatientApiService.mediaUrl(doc['avatar']) ??
+                      PatientApiService.avatarUrl(doc['avatar']);
+                  return Container(
+                    margin: const EdgeInsets.only(bottom: 8),
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(color: AppColors.slate200),
+                    ),
+                    child: Row(
+                      children: [
+                        CircleAvatar(
+                          backgroundColor: AppColors.medical100,
+                          backgroundImage: avatarUrl != null
+                              ? NetworkImage(avatarUrl)
+                              : null,
+                          child: avatarUrl == null
+                              ? const Icon(Icons.person,
+                                  color: AppColors.medical700)
+                              : null,
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                displayName,
+                                style: const TextStyle(
+                                  fontSize: 13.5,
+                                  fontWeight: FontWeight.bold,
+                                  color: AppColors.slate800,
+                                ),
+                              ),
+                              Text(
+                                'Chuyên khoa: $depName',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  fontSize: 11.5,
+                                  color: AppColors.slate500,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        TextButton(
+                          onPressed: () => _navigateToAppointment(
+                            departmentId: depId,
+                            doctorId: docId,
+                          ),
+                          child: const Text('Đặt khám'),
+                        ),
+                      ],
+                    ),
+                  );
+                }),
+            ],
+          ),
+        ),
+        const SizedBox(height: 14),
+        AppSlideFade(
           delay: const Duration(milliseconds: 380),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -828,7 +975,25 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 ],
               ),
-              if (articles.isNotEmpty)
+              if (articles.isEmpty)
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: AppColors.slate200),
+                  ),
+                  child: Text(
+                    _loadingPublic
+                        ? 'Đang tải tin tức và cẩm nang y tế...'
+                        : 'Chưa có bài viết y khoa mới.',
+                    style: const TextStyle(
+                      fontSize: 12.5,
+                      color: AppColors.slate500,
+                    ),
+                  ),
+                )
+              else
                 ...articles.take(2).map((art) {
                   final imgUrl = PatientApiService.mediaUrl(art['image']);
                   return Container(
@@ -905,6 +1070,77 @@ class _HomeScreenState extends State<HomeScreen> {
             ],
           ),
         ),
+        if (feedbacks.isNotEmpty) ...[
+          const SizedBox(height: 14),
+          AppSlideFade(
+            delay: const Duration(milliseconds: 410),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Đánh giá từ bệnh nhân',
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.slate800,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                ...feedbacks.take(3).map((fb) {
+                  final stars = (fb['diem_danh_gia'] as num?)?.toInt() ?? 5;
+                  return Container(
+                    margin: const EdgeInsets.only(bottom: 8),
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(color: AppColors.slate200),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Expanded(
+                              child: Text(
+                                '${fb['ten_benh_nhan'] ?? 'Bệnh nhân'}',
+                                style: const TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.bold,
+                                  color: AppColors.slate800,
+                                ),
+                              ),
+                            ),
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: List.generate(
+                                stars.clamp(1, 5),
+                                (_) => const Icon(
+                                  Icons.star,
+                                  size: 14,
+                                  color: Colors.amber,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          '${fb['noi_dung'] ?? ''}',
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: AppColors.slate600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                }),
+              ],
+            ),
+          ),
+        ],
       ],
     );
   }
@@ -1152,7 +1388,8 @@ class _HomeScreenState extends State<HomeScreen> {
                 .toString();
             final exp = doc['kinh_nghiem']?.toString() ?? 'Nhiều năm kinh nghiệm';
             final room = doc['ten_phong']?.toString() ?? 'Phòng khám chuyên khoa';
-            final avatarUrl = PatientApiService.avatarUrl(doc['avatar']);
+            final avatarUrl = PatientApiService.mediaUrl(doc['avatar']) ??
+                PatientApiService.avatarUrl(doc['avatar']);
 
             return Container(
               margin: const EdgeInsets.only(bottom: 12),
@@ -1560,7 +1797,9 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
                 const SizedBox(width: 8),
                 ...categories.map((c) {
-                  final catName = c.toString();
+                  final catName = c is Map
+                      ? (c['name'] ?? '').toString()
+                      : c.toString();
                   final isSelected = _selectedCategoryFilter == catName;
                   return Padding(
                     padding: const EdgeInsets.only(right: 8),
@@ -1995,6 +2234,10 @@ class _HomeScreenState extends State<HomeScreen> {
       (_publicHomeData?['handbooks'] as List? ?? [])
           .map((e) => Map<String, dynamic>.from(e as Map)),
     );
+    final feedbacks = List<Map<String, dynamic>>.from(
+      (_publicHomeData?['feedbacks'] as List? ?? [])
+          .map((e) => Map<String, dynamic>.from(e as Map)),
+    );
     final categories = (_publicHomeData?['categories'] as List? ?? []);
 
     return Scaffold(
@@ -2050,6 +2293,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                 departments: departments,
                                 doctors: doctors,
                                 articles: articles,
+                                feedbacks: feedbacks,
                                 upcomingMap: upcomingMap,
                               )
                             : _selectedTabIndex == 1

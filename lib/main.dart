@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:provider/provider.dart';
+import 'core/app_scroll_behavior.dart';
 import 'core/app_theme.dart';
 import 'screens/auth_screen.dart';
 import 'screens/main_navigation_screen.dart';
@@ -39,6 +40,7 @@ class H2THealthcareApp extends StatelessWidget {
       child: MaterialApp(
         title: 'H2T Healthcare',
         debugShowCheckedModeBanner: false,
+        scrollBehavior: const AppScrollBehavior(),
         theme: AppTheme.lightTheme,
         darkTheme: AppTheme.lightTheme,
         themeMode: ThemeMode.light,

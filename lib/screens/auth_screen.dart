@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../core/app_colors.dart';
 import '../services/auth_service.dart';
+import '../services/patient_api_service.dart';
 import 'main_navigation_screen.dart';
 
 enum AuthMode { login, register }
@@ -335,6 +336,51 @@ class _AuthScreenState extends State<AuthScreen> {
                                       : null,
                               onFieldSubmitted: (_) => _submit(),
                             ),
+                            if (!_isRegistering) ...[
+                              const SizedBox(height: 6),
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: TextButton(
+                                      onPressed: _showChangePasswordDialog,
+                                      style: TextButton.styleFrom(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 4,
+                                          vertical: 4,
+                                        ),
+                                      ),
+                                      child: const Text(
+                                        'Đổi mật khẩu',
+                                        style: TextStyle(
+                                          color: AppColors.slate600,
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  Expanded(
+                                    child: TextButton(
+                                      onPressed: _showForgotPasswordDialog,
+                                      style: TextButton.styleFrom(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 4,
+                                          vertical: 4,
+                                        ),
+                                      ),
+                                      child: const Text(
+                                        'Quên mật khẩu?',
+                                        style: TextStyle(
+                                          color: AppColors.medical700,
+                                          fontSize: 13.5,
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
                           ],
                         ),
                       ),
@@ -596,6 +642,299 @@ class _AuthScreenState extends State<AuthScreen> {
     _birthDateController.text = '${selected.year.toString().padLeft(4, '0')}-'
         '${selected.month.toString().padLeft(2, '0')}-'
         '${selected.day.toString().padLeft(2, '0')}';
+  }
+
+  Future<void> _showForgotPasswordDialog() async {
+    final api = PatientApiService();
+    final idController =
+        TextEditingController(text: _identifierController.text.trim());
+    final otpController = TextEditingController();
+    final newPassController = TextEditingController();
+    bool otpSent = false;
+    bool busy = false;
+    String? errorMsg;
+    String? infoMsg;
+
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: const Text(
+            'Khôi phục mật khẩu OTP',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          ),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                TextField(
+                  controller: idController,
+                  enabled: !busy,
+                  decoration: const InputDecoration(
+                    labelText: 'Số điện thoại hoặc Email đã đăng ký',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                if (otpSent) ...[
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: otpController,
+                    enabled: !busy,
+                    keyboardType: TextInputType.number,
+                    maxLength: 6,
+                    decoration: const InputDecoration(
+                      labelText: 'Mã OTP (6 chữ số)',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: newPassController,
+                    enabled: !busy,
+                    obscureText: true,
+                    decoration: const InputDecoration(
+                      labelText: 'Mật khẩu mới (tối thiểu 6 ký tự)',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                ],
+                if (infoMsg != null) ...[
+                  const SizedBox(height: 10),
+                  Text(
+                    infoMsg!,
+                    style: const TextStyle(
+                      color: AppColors.medical700,
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+                if (errorMsg != null) ...[
+                  const SizedBox(height: 10),
+                  Text(
+                    errorMsg!,
+                    style: const TextStyle(
+                      color: Colors.red,
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: busy ? null : () => Navigator.pop(ctx),
+              child: const Text('Đóng'),
+            ),
+            if (otpSent)
+              TextButton(
+                onPressed: busy
+                    ? null
+                    : () async {
+                        setDialogState(() {
+                          busy = true;
+                          errorMsg = null;
+                        });
+                        try {
+                          final res = await api
+                              .sendForgotPasswordOtp(idController.text);
+                          setDialogState(() {
+                            busy = false;
+                            infoMsg = (res['message'] ?? 'Đã gửi lại mã OTP.')
+                                .toString();
+                          });
+                        } catch (e) {
+                          setDialogState(() {
+                            busy = false;
+                            errorMsg =
+                                e.toString().replaceFirst('Exception: ', '');
+                          });
+                        }
+                      },
+                child: const Text('Gửi lại mã'),
+              ),
+            FilledButton(
+              onPressed: busy
+                  ? null
+                  : () async {
+                      setDialogState(() {
+                        busy = true;
+                        errorMsg = null;
+                      });
+                      try {
+                        if (!otpSent) {
+                          final res = await api
+                              .sendForgotPasswordOtp(idController.text);
+                          setDialogState(() {
+                            busy = false;
+                            otpSent = true;
+                            infoMsg = (res['message'] ??
+                                    'Mã OTP đã được gửi. Vui lòng nhập mã OTP và mật khẩu mới.')
+                                .toString();
+                          });
+                        } else {
+                          final msg = await api.resetForgotPassword(
+                            identifier: idController.text,
+                            otpCode: otpController.text,
+                            newPassword: newPassController.text,
+                          );
+                          if (!ctx.mounted) return;
+                          Navigator.pop(ctx);
+                          if (!mounted) return;
+                          _identifierController.text = idController.text.trim();
+                          _passwordController.text = newPassController.text;
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              backgroundColor: AppColors.medical600,
+                              content: Text(msg),
+                            ),
+                          );
+                        }
+                      } catch (e) {
+                        setDialogState(() {
+                          busy = false;
+                          errorMsg =
+                              e.toString().replaceFirst('Exception: ', '');
+                        });
+                      }
+                    },
+              child: Text(
+                busy
+                    ? 'Đang xử lý...'
+                    : otpSent
+                        ? 'Xác nhận đặt lại'
+                        : 'Gửi mã OTP',
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+    idController.dispose();
+    otpController.dispose();
+    newPassController.dispose();
+  }
+
+  Future<void> _showChangePasswordDialog() async {
+    final api = PatientApiService();
+    final idController =
+        TextEditingController(text: _identifierController.text.trim());
+    final oldPassController = TextEditingController();
+    final newPassController = TextEditingController();
+    bool busy = false;
+    String? errorMsg;
+
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: const Text(
+            'Đổi mật khẩu tài khoản',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          ),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: idController,
+                  enabled: !busy,
+                  decoration: const InputDecoration(
+                    labelText: 'Tên đăng nhập hoặc SĐT',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: oldPassController,
+                  enabled: !busy,
+                  obscureText: true,
+                  decoration: const InputDecoration(
+                    labelText: 'Mật khẩu hiện tại',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: newPassController,
+                  enabled: !busy,
+                  obscureText: true,
+                  decoration: const InputDecoration(
+                    labelText: 'Mật khẩu mới (tối thiểu 6 ký tự)',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                if (errorMsg != null) ...[
+                  const SizedBox(height: 10),
+                  Text(
+                    errorMsg!,
+                    style: const TextStyle(
+                      color: Colors.red,
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: busy ? null : () => Navigator.pop(ctx),
+              child: const Text('Hủy'),
+            ),
+            FilledButton(
+              onPressed: busy
+                  ? null
+                  : () async {
+                      setDialogState(() {
+                        busy = true;
+                        errorMsg = null;
+                      });
+                      try {
+                        final res = await api.changePassword(
+                          identifier: idController.text,
+                          currentPassword: oldPassController.text,
+                          newPassword: newPassController.text,
+                        );
+                        if (!ctx.mounted) return;
+                        Navigator.pop(ctx);
+                        if (!mounted) return;
+                        _identifierController.text = idController.text.trim();
+                        _passwordController.text = newPassController.text;
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            backgroundColor: AppColors.medical600,
+                            content: Text(
+                              (res['message'] ?? 'Đổi mật khẩu thành công!')
+                                  .toString(),
+                            ),
+                          ),
+                        );
+                      } catch (e) {
+                        setDialogState(() {
+                          busy = false;
+                          errorMsg =
+                              e.toString().replaceFirst('Exception: ', '');
+                        });
+                      }
+                    },
+              child: Text(busy ? 'Đang lưu...' : 'Lưu mật khẩu mới'),
+            ),
+          ],
+        ),
+      ),
+    );
+    idController.dispose();
+    oldPassController.dispose();
+    newPassController.dispose();
   }
 }
 

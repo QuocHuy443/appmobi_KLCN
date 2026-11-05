@@ -5,6 +5,7 @@ import '../core/app_colors.dart';
 import '../core/patient_format.dart';
 import '../services/auth_service.dart';
 import '../services/patient_api_service.dart';
+import '../screens/auth_screen.dart';
 import 'request_error.dart';
 
 class AppointmentBookingForm extends StatefulWidget {
@@ -41,6 +42,7 @@ class _AppointmentBookingFormState extends State<AppointmentBookingForm> {
   String? _slot;
   String? _error;
   String? _token;
+  bool _initialized = false;
   DateTime _date = DateTime.now();
   bool _loading = false;
   bool _sending = false;
@@ -72,11 +74,12 @@ class _AppointmentBookingFormState extends State<AppointmentBookingForm> {
   void didChangeDependencies() {
     super.didChangeDependencies();
     final token = context.watch<AuthViewModel>().currentUser?.token;
-    if (_token != token) {
+    if (!_initialized || _token != token) {
+      _initialized = true;
       _token = token;
       _slots = [];
       _error = null;
-      if (token != null) _loadMeta();
+      _loadMeta();
     }
   }
 
@@ -89,7 +92,6 @@ class _AppointmentBookingFormState extends State<AppointmentBookingForm> {
 
   Future<void> _loadMeta() async {
     final token = _token;
-    if (token == null) return;
     final request = ++_request;
     setState(() {
       _loading = true;
@@ -146,7 +148,14 @@ class _AppointmentBookingFormState extends State<AppointmentBookingForm> {
   }
 
   Future<void> _submit() async {
-    if (_sending || _loading || _slot == null || _department == null || _token == null) {
+    if (_token == null) {
+      await Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => const AuthScreen()),
+      );
+      return;
+    }
+    if (_sending || _loading || _slot == null || _department == null) {
       return;
     }
     final token = _token!;
@@ -897,6 +906,11 @@ class _AppointmentBookingFormState extends State<AppointmentBookingForm> {
                 if (user != null) ...[
                   _summaryRow('Người khám:', user.name),
                   _summaryRow('Mã bệnh nhân:', user.patientCode),
+                ] else ...[
+                  _summaryRow(
+                    'Người khám:',
+                    'Khách vãng lai (Đăng nhập khi xác nhận)',
+                  ),
                 ],
                 _summaryRow('Chuyên khoa:', _selectedDepartmentName()),
                 if (!_editing)
@@ -947,14 +961,18 @@ class _AppointmentBookingFormState extends State<AppointmentBookingForm> {
         SizedBox(
           width: double.infinity,
           child: FilledButton.icon(
-            onPressed: _sending || _loading || _slot == null ? null : _submit,
-            icon: const Icon(Icons.event_available),
+            onPressed: _sending || _loading || (user != null && _slot == null)
+                ? null
+                : _submit,
+            icon: Icon(user == null ? Icons.login : Icons.event_available),
             label: Text(
               _sending
                   ? 'Đang gửi...'
-                  : _editing
-                      ? 'Lưu lịch mới'
-                      : 'Gửi yêu cầu đặt lịch',
+                  : user == null
+                      ? 'Đăng nhập để gửi yêu cầu đặt lịch'
+                      : _editing
+                          ? 'Lưu lịch mới'
+                          : 'Gửi yêu cầu đặt lịch',
             ),
           ),
         ),

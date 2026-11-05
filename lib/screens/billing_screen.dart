@@ -1,5 +1,6 @@
 import '../widgets/request_error.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:provider/provider.dart';
 import '../core/app_colors.dart';
@@ -97,6 +98,64 @@ class _BillingScreenState extends State<BillingScreen> {
     } catch (e) { if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString().replaceFirst('Exception: ', '')))); }
     finally { if (mounted) setState(() => _paymentLoading = false); }
   }
+
+  Future<void> _exportCsv(String token) async {
+    try {
+      final res = await _apiService.exportBillingCsv(token);
+      if (!mounted) return;
+      final csvContent = (res['csv_content'] ?? '').toString();
+      final filename = (res['filename'] ?? 'bang_ke_vien_phi.csv').toString();
+      await showDialog<void>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+          title: Text(
+            'Bảng kê viện phí ($filename)',
+            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+          ),
+          content: SizedBox(
+            width: double.maxFinite,
+            child: SingleChildScrollView(
+              child: SelectableText(
+                csvContent.isEmpty
+                    ? 'Chưa có dữ liệu hóa đơn.'
+                    : csvContent,
+                style: const TextStyle(fontSize: 12, fontFamily: 'monospace'),
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Đóng'),
+            ),
+            FilledButton.icon(
+              onPressed: () async {
+                await Clipboard.setData(ClipboardData(text: csvContent));
+                if (!ctx.mounted) return;
+                Navigator.pop(ctx);
+                if (!mounted) return;
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    backgroundColor: AppColors.medical600,
+                    content: Text('Đã sao chép bảng kê CSV vào bộ nhớ tạm!'),
+                  ),
+                );
+              },
+              icon: const Icon(Icons.copy, size: 16),
+              label: const Text('Sao chép CSV'),
+            ),
+          ],
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
+      );
+    }
+  }
   @override
   Widget build(BuildContext context) {
     final user = context.watch<AuthViewModel>().currentUser;
@@ -131,11 +190,20 @@ class _BillingScreenState extends State<BillingScreen> {
             ),
           ),
           actions: [
-            if (user != null)
+            if (user != null) ...[
+              IconButton(
+                tooltip: 'Xuất bảng kê CSV',
+                onPressed: () => _exportCsv(user.token),
+                icon: const Icon(
+                  Icons.download_outlined,
+                  color: AppColors.medical600,
+                ),
+              ),
               IconButton(
                 onPressed: () => _loadBilling(user.token),
                 icon: const Icon(Icons.refresh, color: AppColors.medical600),
               ),
+            ],
           ],
           bottom: TabBar(
             labelColor: AppColors.medical600,
