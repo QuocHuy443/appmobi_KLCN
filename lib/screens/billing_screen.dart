@@ -123,7 +123,7 @@ class _BillingScreenState extends State<BillingScreen> {
             onPressed: () => Navigator.pop(context),
           ),
           title: const Text(
-            'Thanh Toán Viện Phí & BHYT',
+            'Thanh Toán Viện Phí và BHYT',
             style: TextStyle(
               color: AppColors.slate800,
               fontSize: 18,
@@ -164,7 +164,7 @@ class _BillingScreenState extends State<BillingScreen> {
                       ),
                       const SizedBox(height: 14),
                       const Text(
-                        'Vui lòng đăng nhập để tra cứu hóa đơn viện phí & mức khấu trừ BHYT 80%.',
+                        'Vui lòng đăng nhập để tra cứu hóa đơn viện phí và mức khấu trừ BHYT 80%.',
                         textAlign: TextAlign.center,
                         style:
                             TextStyle(fontSize: 14, color: AppColors.slate600),
@@ -366,7 +366,7 @@ class _BillingScreenState extends State<BillingScreen> {
           ),
           const SizedBox(height: 12),
           Text(
-            (inv['chan_doan'] ?? 'Chi phí khám & điều trị').toString(),
+            (inv['chan_doan'] ?? 'Chi phí khám và điều trị').toString(),
             style: const TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.bold,

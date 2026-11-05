@@ -451,4 +451,64 @@ class PatientApiService {
         path.contains('..') || path.contains('%') || path.contains('\\')) { return null; }
     return Uri.parse(AuthRepositoryImpl.defaultBaseUrl).resolve(path).toString();
   }
+
+  static String? mediaUrl(dynamic path) {
+    if (path is! String) return null;
+    final clean = path.trim();
+    if (clean.isEmpty || clean.contains('..') || clean.contains('\\')) return null;
+    if (clean.startsWith('http://') || clean.startsWith('https://')) return clean;
+    if (clean.startsWith('/static/')) {
+      return Uri.parse(AuthRepositoryImpl.defaultBaseUrl).resolve(clean).toString();
+    }
+    return null;
+  }
+
+  Future<Map<String, dynamic>> getPublicHome() async {
+    try {
+      final res = await _dio.get('/api/v1/mobile/public/home');
+      return Map<String, dynamic>.from(res.data as Map);
+    } on DioException catch (e) {
+      throw Exception(_extractError(e));
+    }
+  }
+
+  Future<Map<String, dynamic>> getPublicPricing() async {
+    try {
+      final res = await _dio.get('/api/v1/mobile/public/pricing');
+      return Map<String, dynamic>.from(res.data as Map);
+    } on DioException catch (e) {
+      throw Exception(_extractError(e));
+    }
+  }
+
+  Future<Map<String, dynamic>> getPublicArticles({
+    String? category,
+    String? search,
+  }) async {
+    try {
+      final query = <String, dynamic>{};
+      if (category != null && category.trim().isNotEmpty) {
+        query['category'] = category.trim();
+      }
+      if (search != null && search.trim().isNotEmpty) {
+        query['search'] = search.trim();
+      }
+      final res = await _dio.get(
+        '/api/v1/mobile/public/articles',
+        queryParameters: query,
+      );
+      return Map<String, dynamic>.from(res.data as Map);
+    } on DioException catch (e) {
+      throw Exception(_extractError(e));
+    }
+  }
+
+  Future<Map<String, dynamic>> getPublicArticleDetail(String slug) async {
+    try {
+      final res = await _dio.get('/api/v1/mobile/public/articles/$slug');
+      return Map<String, dynamic>.from(res.data as Map);
+    } on DioException catch (e) {
+      throw Exception(_extractError(e));
+    }
+  }
 }

@@ -68,7 +68,11 @@ void main(){
     expect(find.textContaining('Mạng không ổn định'),findsOneWidget);
     expect(nameController.text,'Trần Thị Bình');
     api.failSave=false;
-    await tester.scrollUntilVisible(submit,200,scrollable:find.byType(Scrollable).first);await tester.tap(submit);await tester.pump();await tester.pump(const Duration(milliseconds:100));
+    await tester.ensureVisible(submit);
+    await tester.pumpAndSettle();
+    await tester.tap(submit);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
     expect(auth.currentUser!.profileComplete,isTrue);
     expect(auth.currentUser!.name,'Trần Thị Bình');
     expect(find.byType(BottomNavigationBar),findsOneWidget);

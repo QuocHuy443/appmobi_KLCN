@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import '../core/app_colors.dart';
+import '../screens/articles_screen.dart';
 import '../screens/billing_screen.dart';
 import '../screens/medical_records_screen.dart';
+import '../screens/pricing_screen.dart';
 import '../screens/test_results_screen.dart';
 
 class QuickServicesWidget extends StatelessWidget {
@@ -12,14 +14,54 @@ class QuickServicesWidget extends StatelessWidget {
   void _showVitalsSheet(BuildContext context) {
     final v = vitals ?? {};
     final items = [
-      {'label': 'Mạch', 'value': v['mach'] ?? 'Chưa đo', 'icon': Icons.favorite, 'color': Colors.redAccent},
-      {'label': 'Huyết áp', 'value': v['huyet_ap'] ?? 'Chưa đo', 'icon': Icons.speed, 'color': Colors.blueAccent},
-      {'label': 'Nhiệt độ', 'value': v['nhiet_do'] ?? 'Chưa đo', 'icon': Icons.thermostat, 'color': Colors.orange},
-      {'label': 'SpO2', 'value': v['spo2'] ?? 'Chưa đo', 'icon': Icons.air, 'color': AppColors.medical600},
-      {'label': 'Nhịp thở', 'value': v['nhip_tho'] ?? 'Chưa đo', 'icon': Icons.waves, 'color': Colors.teal},
-      {'label': 'Chiều cao', 'value': v['chieu_cao'] ?? 'Chưa đo', 'icon': Icons.height, 'color': Colors.indigo},
-      {'label': 'Cân nặng', 'value': v['can_nang'] ?? 'Chưa đo', 'icon': Icons.monitor_weight_outlined, 'color': Colors.purple},
-      {'label': 'Chỉ số BMI', 'value': v['bmi'] ?? 'Chưa đo', 'icon': Icons.analytics_outlined, 'color': AppColors.medical700},
+      {
+        'label': 'Mạch',
+        'value': v['mach'] ?? 'Chưa đo',
+        'icon': Icons.favorite,
+        'color': Colors.redAccent,
+      },
+      {
+        'label': 'Huyết áp',
+        'value': v['huyet_ap'] ?? 'Chưa đo',
+        'icon': Icons.speed,
+        'color': Colors.blueAccent,
+      },
+      {
+        'label': 'Nhiệt độ',
+        'value': v['nhiet_do'] ?? 'Chưa đo',
+        'icon': Icons.thermostat,
+        'color': Colors.orange,
+      },
+      {
+        'label': 'SpO2',
+        'value': v['spo2'] ?? 'Chưa đo',
+        'icon': Icons.air,
+        'color': AppColors.medical600,
+      },
+      {
+        'label': 'Nhịp thở',
+        'value': v['nhip_tho'] ?? 'Chưa đo',
+        'icon': Icons.waves,
+        'color': Colors.teal,
+      },
+      {
+        'label': 'Chiều cao',
+        'value': v['chieu_cao'] ?? 'Chưa đo',
+        'icon': Icons.height,
+        'color': Colors.indigo,
+      },
+      {
+        'label': 'Cân nặng',
+        'value': v['can_nang'] ?? 'Chưa đo',
+        'icon': Icons.monitor_weight_outlined,
+        'color': Colors.purple,
+      },
+      {
+        'label': 'Chỉ số BMI',
+        'value': v['bmi'] ?? 'Chưa đo',
+        'icon': Icons.analytics_outlined,
+        'color': AppColors.medical700,
+      },
     ];
 
     showModalBottomSheet(
@@ -35,7 +77,11 @@ class QuickServicesWidget extends StatelessWidget {
           children: [
             const Text(
               'Chỉ số sinh tồn gần nhất (SQL Server)',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.slate800),
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: AppColors.slate800,
+              ),
             ),
             const SizedBox(height: 16),
             GridView.builder(
@@ -51,7 +97,10 @@ class QuickServicesWidget extends StatelessWidget {
               itemBuilder: (_, idx) {
                 final it = items[idx];
                 return Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 8,
+                  ),
                   decoration: BoxDecoration(
                     color: AppColors.slate50,
                     borderRadius: BorderRadius.circular(12),
@@ -59,7 +108,11 @@ class QuickServicesWidget extends StatelessWidget {
                   ),
                   child: Row(
                     children: [
-                      Icon(it['icon'] as IconData, color: it['color'] as Color, size: 22),
+                      Icon(
+                        it['icon'] as IconData,
+                        color: it['color'] as Color,
+                        size: 22,
+                      ),
                       const SizedBox(width: 10),
                       Expanded(
                         child: Column(
@@ -68,7 +121,10 @@ class QuickServicesWidget extends StatelessWidget {
                           children: [
                             Text(
                               it['label'] as String,
-                              style: const TextStyle(fontSize: 11, color: AppColors.slate500),
+                              style: const TextStyle(
+                                fontSize: 11,
+                                color: AppColors.slate500,
+                              ),
                             ),
                             Text(
                               it['value'].toString(),
@@ -98,6 +154,24 @@ class QuickServicesWidget extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final services = [
+      {
+        'title': 'Bảng giá',
+        'icon': Icons.price_check_rounded,
+        'color': AppColors.emerald500,
+        'onTap': () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const PricingScreen()),
+            ),
+      },
+      {
+        'title': 'Tin tức Y tế',
+        'icon': Icons.newspaper_rounded,
+        'color': Colors.teal,
+        'onTap': () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const ArticlesScreen()),
+            ),
+      },
       {
         'title': 'Đơn thuốc',
         'icon': Icons.medication,
@@ -137,9 +211,10 @@ class QuickServicesWidget extends StatelessWidget {
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 4,
-        childAspectRatio: 0.8,
+        crossAxisCount: 3,
+        childAspectRatio: 1.15,
         crossAxisSpacing: 10,
+        mainAxisSpacing: 10,
       ),
       itemCount: services.length,
       itemBuilder: (context, index) {
@@ -147,28 +222,43 @@ class QuickServicesWidget extends StatelessWidget {
         return InkWell(
           borderRadius: BorderRadius.circular(14),
           onTap: item['onTap'] as VoidCallback,
-          child: Column(
-            children: [
-              Container(
-                width: 50,
-                height: 50,
-                decoration: BoxDecoration(
-                  color: (item['color'] as Color).withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(14),
+          child: Container(
+            padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 6),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: AppColors.slate200),
+            ),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Container(
+                  width: 42,
+                  height: 42,
+                  decoration: BoxDecoration(
+                    color: (item['color'] as Color).withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(
+                    item['icon'] as IconData,
+                    color: item['color'] as Color,
+                    size: 22,
+                  ),
                 ),
-                child: Icon(
-                  item['icon'] as IconData,
-                  color: item['color'] as Color,
-                  size: 24,
+                const SizedBox(height: 6),
+                Text(
+                  item['title'] as String,
+                  textAlign: TextAlign.center,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.slate800,
+                  ),
                 ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                item['title'] as String,
-                textAlign: TextAlign.center,
-                style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
-              ),
-            ],
+              ],
+            ),
           ),
         );
       },

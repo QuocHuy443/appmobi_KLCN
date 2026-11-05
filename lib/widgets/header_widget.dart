@@ -101,7 +101,7 @@ class HeaderWidget extends StatelessWidget {
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(
                       content: Text(
-                          'Tổng đài Cấp cứu & CSKH H2T Care: 1900 6868 (Trực 24/7)'),
+                          'Tổng đài Cấp cứu và CSKH H2T Care: 1900 6868 (Trực 24/7)'),
                     ),
                   );
                 },

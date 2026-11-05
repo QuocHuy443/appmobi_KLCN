@@ -154,7 +154,7 @@ class _MedicalRecordsScreenState extends State<MedicalRecordsScreen> {
             indicatorWeight: 3,
             labelStyle: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
             tabs: [
-              Tab(text: 'Lịch sử khám & Đơn thuốc'),
+              Tab(text: 'Lịch sử khám và Đơn thuốc'),
               Tab(text: 'Chỉ số sinh tồn'),
             ],
           ),
@@ -232,7 +232,7 @@ class _MedicalRecordsScreenState extends State<MedicalRecordsScreen> {
   }
 
   Widget _buildRecordCard(Map<String, dynamic> rec) {
-    // 1. Chẩn đoán & Chuyên khoa (hỗ trợ cả SQL Server và Local Store)
+    // 1. Chẩn đoán và Chuyên khoa (hỗ trợ cả SQL Server và Local Store)
     final diagnosis = (rec['chan_doan'] ??
             rec['chan_doan_icd'] ??
             rec['chan_doan_so_bo'] ??
@@ -264,7 +264,7 @@ class _MedicalRecordsScreenState extends State<MedicalRecordsScreen> {
       labs = List<Map<String, dynamic>>.from(rec['can_lam_sang']);
     }
 
-    // 3. Đơn thuốc điện tử & Hình thức nhận thuốc
+    // 3. Đơn thuốc điện tử và Hình thức nhận thuốc
     final presMap = rec['prescription'] is Map
         ? Map<String, dynamic>.from(rec['prescription'] as Map)
         : null;
@@ -327,7 +327,7 @@ class _MedicalRecordsScreenState extends State<MedicalRecordsScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header: Chuyên khoa & Ngày khám
+          // Header: Chuyên khoa và Ngày khám
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -373,7 +373,7 @@ class _MedicalRecordsScreenState extends State<MedicalRecordsScreen> {
           ),
           const SizedBox(height: 6),
 
-          // Bác sĩ điều trị & Trạng thái
+          // Bác sĩ điều trị và Trạng thái
           Row(
             children: [
               const FaIcon(
@@ -506,7 +506,7 @@ class _MedicalRecordsScreenState extends State<MedicalRecordsScreen> {
                 ),
                 SizedBox(width: 6),
                 Text(
-                  'Cận lâm sàng & Xét nghiệm:',
+                  'Cận lâm sàng và Xét nghiệm:',
                   style: TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.bold,
@@ -583,7 +583,7 @@ class _MedicalRecordsScreenState extends State<MedicalRecordsScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Tiêu đề Đơn thuốc & Trạng thái duyệt
+                  // Tiêu đề Đơn thuốc và Trạng thái duyệt
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
@@ -821,7 +821,7 @@ class _MedicalRecordsScreenState extends State<MedicalRecordsScreen> {
                                 : (isApproved
                                     ? 'Hình thức nhận: Mua tại bệnh viện (Đơn đã được duyệt, vui lòng thanh toán và nhận thuốc tại quầy)'
                                     : (isHospital
-                                        ? 'Hình thức nhận: Mua tại bệnh viện (Đơn chuyển sang quầy thu ngân & kho dược)'
+                                        ? 'Hình thức nhận: Mua tại bệnh viện (Đơn chuyển sang quầy thu ngân và kho dược)'
                                         : (isOutside
                                             ? 'Hình thức nhận: Tự mua ngoài (Bệnh nhân tự mua tại nhà thuốc bên ngoài)'
                                             : 'Vui lòng chọn hình thức nhận thuốc:'))),
@@ -972,7 +972,7 @@ class _MedicalRecordsScreenState extends State<MedicalRecordsScreen> {
         const SizedBox(height: 12),
         _buildVitalCard(
           FontAwesomeIcons.weightScale,
-          'Cân nặng & Chiều cao',
+          'Cân nặng và Chiều cao',
           '${_vitals['can_nang'] ?? '—'} kg / ${_vitals['chieu_cao'] ?? '—'} cm',
           '',
           'Ổn định',
