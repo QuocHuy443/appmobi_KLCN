@@ -1,148 +1,214 @@
 # Ứng dụng Di động Bệnh nhân H2T Healthcare (`appmobi_KLCN`)
 
-Ứng dụng đa nền tảng (**Flutter**) dành riêng cho **Bệnh nhân** trong hệ sinh thái **Hệ thống Quản lý Phòng khám Đa khoa H2T Healthcare**. Ứng dụng kết nối trực tiếp với Web Backend (**Python Flask**) tại thư mục `KLCN_QuanLyPhongKhamDaKhoa` và dùng chung Cơ sở dữ liệu **Microsoft SQL Server (`quan_ly_phong_kham`)**, đảm bảo mọi thao tác đặt lịch, tra cứu bệnh án, đơn thuốc, xét nghiệm, viện phí, thông báo và góp ý đều đồng nhất theo thời gian thực giữa ứng dụng di động và Cổng Bệnh nhân trên Web.
+Ứng dụng di động đa nền tảng (**Flutter**) dành riêng cho **Bệnh nhân** thuộc hệ sinh thái **Hệ thống Quản lý Phòng khám Đa khoa H2T Healthcare**. Ứng dụng kết nối trực tiếp với Web Backend (**Python Flask**) tại thư mục `KLCN_QuanLyPhongKhamDaKhoa` và dùng chung Cơ sở dữ liệu **Microsoft SQL Server (`quan_ly_phong_kham`)**, bảo đảm toàn bộ dữ liệu khám bệnh, đặt lịch hẹn, viện phí, bảo hiểm y tế (BHYT), đơn thuốc, kết quả xét nghiệm và thông báo đều đồng bộ theo thời gian thực giữa ứng dụng di động và cổng web của phòng khám.
 
-## 1. Kiến trúc hệ thống và Cơ sở dữ liệu dùng chung
+---
+
+## 1. Tổng quan và Khả năng nổi bật của Ứng dụng
+
+Ứng dụng được thiết kế chuyên biệt cho bệnh nhân với giao diện Y tế hiện đại (chuẩn Material 3, bảng màu `Medical Emerald`), tối ưu thao tác trên màn hình cảm ứng điện thoại và máy tính bảng:
+
+### 1.1. Cổng thông tin Phòng khám và Menu ngang 6 chuyên mục trên Trang chủ
+Trang chủ đóng vai trò là cổng thông tin y tế công khai, cho phép người bệnh (kể cả khách chưa đăng nhập hoặc bệnh nhân đã đăng nhập) truy cập nhanh chóng qua thanh menu ngang:
+* **Tổng quan**: Banner giới thiệu phòng khám, 3 cam kết chuẩn Bộ Y tế (100% Bác sĩ Chuyên khoa, Trang thiết bị hiện đại, Áp dụng BHYT thông tuyến), phím tắt dịch vụ nhanh, nhắc lịch khám sắp tới và các chuyên khoa, tin tức tiêu biểu.
+* **Chuyên khoa**: Danh mục toàn bộ chuyên khoa điều trị từ CSDL SQL Server (Nội tổng quát, Ngoại khoa, Nhi khoa, Sản phụ khoa, Tai Mũi Họng, Răng Hàm Mặt, Mắt, Da liễu, Chẩn đoán hình ảnh...), hiển thị mô tả, số lượng bác sĩ đang trực, giá khám tiêu chuẩn và nút **Đặt khám khoa này** để đặt lịch trực tiếp.
+* **Đội ngũ Bác sĩ**: Danh sách các Giáo sư, Tiến sĩ, Bác sĩ Chuyên khoa II giàu kinh nghiệm; tìm kiếm theo tên hoặc khoa; xem thông tin học vị, phòng khám, số năm công tác và nút **Đặt lịch với BS** chọn sẵn bác sĩ đó.
+* **Bảng giá viện phí**: Danh mục kỹ thuật y tế niêm yết công khai theo quy định Bộ Y tế, lọc nhanh theo chuyên khoa, hiển thị rõ Giá gốc và Giá sau khi trừ mức giảm BHYT.
+* **Tin tức và Cẩm nang**: Kho bài viết y học chính thống từ bảng `bai_viet` của SQL Server, lọc theo 10 chuyên mục y khoa, xem chi tiết bài viết (tự động cộng lượt xem trong CSDL) và gợi ý bài viết cùng chuyên mục.
+* **Quy trình khám**: Hướng dẫn 4 bước khám bệnh chuẩn hóa của H2T Healthcare, các lưu ý cần chuẩn bị trước khi đi khám, hotline cấp cứu 1900 6868 và địa chỉ phòng khám.
+
+### 1.2. Hồ sơ của tôi (Quản lý Bệnh nhân tập trung)
+Toàn bộ thông tin cá nhân và dữ liệu y tế được quy hoạch gọn gàng trong tab **Hồ sơ của tôi**:
+* **Thẻ VIP Bệnh nhân điện tử**: Tích hợp số thẻ BHYT, nhóm máu, mã bệnh nhân và mã QR Check-in để quét tại quầy tiếp đón.
+* **Hồ sơ thông tin định danh**: Số CCCD, Ngày sinh, Giới tính, Số điện thoại, Thẻ BHYT, Nhóm máu, Tiền sử bệnh/dị ứng và Thông tin người thân liên hệ khẩn cấp.
+* **Chỉ số sinh tồn lưu trữ từ lần khám gần nhất**: Đóng vai trò tham khảo lịch sử khám bệnh từ CSDL (Mạch, Huyết áp, SpO2, Nhiệt độ, Chiều cao, Cân nặng, Chỉ số BMI).
+
+### 1.3. Đặt lịch khám thông minh theo Ca trực và Ma trận giờ
+* Phân chia 3 ca trực trong ngày (Sáng: 07:30 - 11:30, Chiều: 13:00 - 17:00, Tối: 17:30 - 20:30) với các khung giờ 30 phút.
+* Tự động khóa các khung giờ không có ca trực hoặc đã kín chỗ theo thời gian thực từ CSDL `lich_lam_viec` và `lich_hen`.
+* Hỗ trợ chọn bác sĩ cụ thể hoặc để phòng khám tự phân công theo chuyên khoa.
+
+### 1.4. Quản lý Lịch hẹn toàn diện
+* Tìm kiếm lịch hẹn theo mã hẹn, tên bác sĩ, chuyên khoa.
+* Lọc theo trạng thái: `Tất cả`, `Chờ duyệt`, `Đã xác nhận`, `Đã khám`, `Đã hủy`.
+* Nhận diện lịch hẹn do bác sĩ chỉ định tái khám (`Bác sĩ hẹn mới`).
+* Hỗ trợ đổi ngày giờ khám theo ma trận ca trực hoặc hủy lịch hẹn kèm lý do.
+
+### 1.5. Bệnh án điện tử (EMR) và Đơn thuốc điện tử
+* Tra cứu lịch sử các đợt khám bệnh, chẩn đoán bệnh theo mã ICD-10, triệu chứng, kết luận điều trị và lời dặn của bác sĩ.
+* Danh sách thuốc chi tiết (tên thuốc, hàm lượng, cách dùng, số lượng, đơn giá).
+* Cho phép người bệnh chủ động lựa chọn hình thức nhận thuốc: `Mua tại bệnh viện` hoặc `Tự mua ngoài`.
+
+### 1.6. Kết quả Xét nghiệm và Chẩn đoán hình ảnh
+* Thống kê tổng số chỉ định, số kết quả đã hoàn tất và số đợt khám.
+* Phân loại theo nhóm `Xét nghiệm` và `Chẩn đoán hình ảnh`.
+* Xem chi tiết chỉ số đo lường, khoảng tham chiếu, kết luận của bác sĩ và xem ảnh kết quả cận lâm sàng có hỗ trợ phóng to/thu nhỏ.
+
+### 1.7. Hóa đơn Viện phí và Khấu trừ BHYT
+* Tự động tính toán mức khấu trừ BHYT 80% đối với bệnh nhân có thẻ BHYT hợp lệ.
+* Phân tách hóa đơn `Cần thanh toán` và `Lịch sử hóa đơn`.
+* Xem chi tiết từng khoản mục viện phí và hướng dẫn thanh toán tiện lợi qua mã VietQR hoặc quầy thu ngân.
+
+### 1.8. Thông báo Thời gian thực và Điều hướng Thông minh
+* Đồng bộ chuông thông báo định kỳ mỗi 10 giây từ CSDL.
+* Phân loại thông báo theo 4 nhóm chuyên biệt.
+* Chạm vào thông báo để tự động chuyển tiếp đến đúng màn hình nghiệp vụ tương ứng (lịch hẹn, bệnh án, hóa đơn hoặc xét nghiệm).
+
+### 1.9. Đánh giá và Góp ý Dịch vụ
+* Gửi nhận xét và đánh giá từ 1 đến 5 sao theo từng chủ đề hoặc gắn trực tiếp với phiếu khám cụ thể.
+* Theo dõi trạng thái tiếp nhận và nội dung phản hồi từ Ban Quản lý Phòng khám.
+
+---
+
+## 2. Kiến trúc Hệ thống và Cơ sở dữ liệu dùng chung
 
 Hệ thống hoạt động theo mô hình **Client – RESTful API – Shared SQL Server Database**:
 
-* **Ứng dụng Bệnh nhân (`appmobi_KLCN`)**: Giao diện Flutter chuẩn Material 3, đồng bộ bố cục và bảng màu Y tế (`Medical Emerald`) với giao diện Web `templates/patient/*.html`.
-* **Máy chủ Web và API (`KLCN_QuanLyPhongKhamDaKhoa`)**: Cung cấp đồng thời giao diện Web quản trị/bệnh nhân và hai Blueprint REST API dành cho di động (`mobile_auth_bp` và `mobile_patient_bp`) chạy tại cổng `5000`.
-* **Cơ sở dữ liệu dùng chung (`quan_ly_phong_kham` trên SQL Server)**: Gồm 27 bảng quan hệ được định nghĩa tại `database/cosodulieu.sql`. Không sử dụng dữ liệu giả lập cục bộ khi mất kết nối để đảm bảo tính toàn vẹn dữ liệu y tế.
+* **Client Di động (`appmobi_KLCN`)**: Ứng dụng Flutter đa nền tảng, quản lý trạng thái bằng `Provider`, giao tiếp mạng qua `Dio`, lưu trữ phiên bảo mật bằng `flutter_secure_storage`.
+* **Backend Web (`KLCN_QuanLyPhongKhamDaKhoa`)**: Máy chủ Python Flask cung cấp các Blueprint API tại cổng `5000` (`mobile_auth_bp`, `mobile_patient_bp` và các API công khai trong `home_controller.py`).
+* **Cơ sở dữ liệu Microsoft SQL Server (`quan_ly_phong_kham`)**: Gồm 27 bảng quan hệ được định nghĩa tại `database/cosodulieu.sql`, bảo đảm tính nhất quán dữ liệu y tế, không dùng dữ liệu giả lập cục bộ.
 
-### Bảng đối chiếu nghiệp vụ Bệnh nhân giữa App Mobile, Web Portal và SQL Server
+### Bảng đối chiếu nghiệp vụ giữa App Mobile, Web Portal và SQL Server
 
-| Phân hệ trên App | Màn hình Flutter | Giao diện Web tương ứng | Bảng SQL Server sử dụng | Mô tả nghiệp vụ chi tiết |
-| :--- | :--- | :--- | :--- | :--- |
-| **Xác thực và Hồ sơ lần đầu** | `auth_screen.dart`, `personal_profile_screen.dart` | `auth/login.html`, `patient/complete_profile.html` | `nguoi_dung`, `benh_nhan` | Đăng nhập bằng Tên đăng nhập hoặc Số điện thoại, đăng ký tài khoản bệnh nhân mới, lưu phiên Bearer Token bền vững và bắt buộc hoàn thiện hồ sơ lần đầu nếu thiếu thông tin cơ bản. |
-| **Trang chủ Bệnh nhân và Cổng thông tin Phòng khám** | `home_screen.dart` | `home.html`, `patient/dashboard.html` | `benh_nhan`, `lich_hen`, `phieu_kham`, `thong_bao`, `banner`, `chuyen_khoa`, `dich_vu`, `bai_viet` | Kết hợp tinh gọn Trang chủ Web và Bảng điều khiển Bệnh nhân: thẻ thành viên BHYT và nhóm máu, banner phòng khám, 6 tiện ích sức khỏe nhanh, lịch hẹn sắp tới, khung tra cứu nhanh bảng giá dịch vụ theo chuyên khoa và danh sách tin tức/cẩm nang y khoa mới nhất. |
-| **Tra cứu Bảng giá Dịch vụ và Viện phí** | `pricing_screen.dart` | `pricing.html` | `dich_vu`, `chuyen_khoa` | Tra cứu công khai toàn bộ bảng giá khám bệnh, xét nghiệm, chẩn đoán hình ảnh theo từng chuyên khoa; tìm kiếm nhanh tên dịch vụ; hiển thị rõ Giá gốc (chưa BHYT) và Giá sau giảm BHYT kèm nút Đặt khám trực tiếp. |
-| **Tin tức và Cẩm nang Y khoa** | `articles_screen.dart` | `articles.html`, `article_detail.html` | `bai_viet`, `nhan_vien` | Đọc tin tức phòng khám, cẩm nang y tế và hướng dẫn khám bệnh; tìm kiếm và lọc theo 10 chuyên mục y khoa; xem chi tiết bài viết (tự động cộng lượt xem `luot_xem` trong CSDL) và danh sách bài viết liên quan. |
-| **Đặt lịch khám theo Ca trực và Ma trận giờ** | `appointment_booking_form.dart` | `patient/booking.html` | `chuyen_khoa`, `dich_vu`, `bac_si`, `lich_lam_viec`, `ca_lam_viec`, `phong_kham`, `lich_hen` | Quy trình đặt lịch 4 bước: (1) Chọn chuyên khoa và loại hình khám kèm bảng giá; (2) Chọn ngày khám và khung giờ 30 phút chia theo 3 Ca trực (Sáng, Chiều, Tối), tự động khóa giờ không có ca trực hoặc đã kín chỗ; (3) Chọn bác sĩ trực trong ca hoặc để hệ thống tự phân công; (4) Nhập triệu chứng và xem thẻ tóm tắt phiếu hẹn trước khi xác nhận. |
-| **Quản lý Lịch hẹn của tôi** | `appointment_screen.dart` | `patient/appointments.html` | `lich_hen`, `bac_si`, `chuyen_khoa`, `phong_kham`, `dich_vu` | Tìm kiếm theo mã hẹn/bác sĩ/chuyên khoa, lọc theo trạng thái (`Tất cả`, `Chờ duyệt`, `Đã xác nhận`, `Đã khám`, `Đã hủy`), nhận diện lịch hẹn do bác sĩ tạo (`Bác sĩ hẹn mới`), xem chi tiết, đổi ngày giờ khám theo ma trận ca trực và hủy lịch hẹn. |
-| **Bệnh án điện tử (EMR) và Đơn thuốc** | `medical_records_screen.dart` | `patient/records.html`, `patient/prescriptions.html` | `phieu_kham`, `don_thuoc`, `chi_tiet_don_thuoc`, `thuoc`, `chi_dinh_cls` | Tra cứu lịch sử các đợt khám, chẩn đoán ICD-10, triệu chứng, kết luận điều trị, lời dặn bác sĩ, lịch hẹn tái khám, danh sách thuốc chi tiết và lựa chọn hình thức nhận thuốc (`Mua tại bệnh viện` hoặc `Tự mua ngoài`). |
-| **Kết quả Xét nghiệm và CĐHA** | `test_results_screen.dart` | `patient/lab_results.html` | `chi_dinh_cls`, `ket_qua_cls`, `dich_vu`, `phieu_kham` | Thống kê tổng chỉ định, số kết quả đã hoàn thành và số đợt khám; tìm kiếm và lọc theo nhóm (`Xét nghiệm`, `Chẩn đoán hình ảnh`); xem chỉ số, khoảng tham chiếu, kết luận và xem ảnh kết quả cận lâm sàng có hỗ trợ phóng to. |
-| **Thanh toán Viện phí và BHYT** | `billing_screen.dart` | `patient/billing.html` | `hoa_don`, `chi_tiet_hoa_don`, `benh_nhan` | Phân tách hóa đơn `Cần thanh toán` và `Lịch sử`, tự động hiển thị mức khấu trừ BHYT 80% (nếu bệnh nhân có thẻ BHYT hợp lệ), chi tiết từng khoản mục thu và hướng dẫn thanh toán qua VietQR hoặc quầy thu ngân. |
-| **Thông báo Thời gian thực** | `notifications_screen.dart`, `notification_navigation.dart` | `patient/notifications.html`, `components/header.html` | `thong_bao` | Tự động đồng bộ chuông thông báo định kỳ mỗi 10 giây, tìm kiếm và lọc thông báo theo 4 nhóm (`Tất cả`, `Lịch hẹn và Tái khám`, `Kết quả và Khám bệnh`, `Viện phí và Đơn thuốc`), đánh dấu đã đọc từng mục hoặc tất cả, và điều hướng trực tiếp đến đúng màn hình nghiệp vụ theo trường `lien_ket`. |
-| **Tài khoản và Góp ý Phản hồi** | `profile_screen.dart`, `feedback_screen.dart` | `patient/profile.html`, `patient/feedbacks.html` | `nguoi_dung`, `benh_nhan`, `gop_y_phan_hoi` | Cập nhật thông tin hành chính, tiền sử dị ứng/bệnh lý, liên hệ người thân, tải ảnh đại diện (từ thiết bị hoặc URL HTTPS), gửi đánh giá 1 đến 5 sao theo chủ đề/phiếu khám và theo dõi phản hồi từ Ban Quản lý Phòng khám. |
+| Phân hệ nghiệp vụ | Màn hình Flutter | Giao diện Web tương ứng | Bảng SQL Server sử dụng |
+| :--- | :--- | :--- | :--- |
+| **Xác thực và Hồ sơ lần đầu** | `auth_screen.dart`, `personal_profile_screen.dart` | `auth/login.html`, `patient/complete_profile.html` | `nguoi_dung`, `benh_nhan` |
+| **Trang chủ Cổng thông tin** | `home_screen.dart` | `home.html`, `patient/dashboard.html` | `banner`, `chuyen_khoa`, `bac_si`, `dich_vu`, `bai_viet`, `lich_hen` |
+| **Tra cứu Bảng giá Viện phí** | `pricing_screen.dart` | `pricing.html` | `dich_vu`, `chuyen_khoa` |
+| **Tin tức và Cẩm nang Y khoa** | `articles_screen.dart` | `articles.html`, `article_detail.html` | `bai_viet`, `nhan_vien` |
+| **Đặt lịch khám theo Ca trực** | `appointment_booking_form.dart` | `patient/booking.html` | `chuyen_khoa`, `dich_vu`, `bac_si`, `lich_lam_viec`, `ca_lam_viec`, `phong_kham`, `lich_hen` |
+| **Quản lý Lịch hẹn của tôi** | `appointment_screen.dart` | `patient/appointments.html` | `lich_hen`, `bac_si`, `chuyen_khoa`, `phong_kham`, `dich_vu` |
+| **Bệnh án EMR và Đơn thuốc** | `medical_records_screen.dart` | `patient/records.html`, `patient/prescriptions.html` | `phieu_kham`, `don_thuoc`, `chi_tiet_don_thuoc`, `thuoc`, `chi_dinh_cls` |
+| **Kết quả Xét nghiệm và CĐHA** | `test_results_screen.dart` | `patient/lab_results.html` | `chi_dinh_cls`, `ket_qua_cls`, `dich_vu`, `phieu_kham` |
+| **Hóa đơn và Khấu trừ BHYT** | `billing_screen.dart` | `patient/billing.html` | `hoa_don`, `chi_tiet_hoa_don`, `benh_nhan` |
+| **Thông báo Thời gian thực** | `notifications_screen.dart`, `notification_navigation.dart` | `patient/notifications.html`, `components/header.html` | `thong_bao` |
+| **Hồ sơ cá nhân và Góp ý** | `profile_screen.dart`, `feedback_screen.dart` | `patient/profile.html`, `patient/feedbacks.html` | `nguoi_dung`, `benh_nhan`, `gop_y_phan_hoi` |
 
-## 2. Danh sách REST API kết nối với Web Backend
+---
 
-Ứng dụng giao tiếp với Backend Flask qua các endpoint chuẩn dưới đây:
+## 3. Danh mục REST API kết nối với Web Backend
 
-* **Cổng thông tin Công khai (`/api/v1/mobile/public`)**:
-  * `GET /api/v1/mobile/public/home`: Dữ liệu Trang chủ phòng khám tinh gọn (banner, chuyên khoa, bác sĩ, bảng giá tiêu biểu, tin tức và cẩm nang y tế).
-  * `GET /api/v1/mobile/public/pricing`: Toàn bộ bảng giá dịch vụ và viện phí nhóm theo chuyên khoa kèm mức giảm BHYT.
-  * `GET /api/v1/mobile/public/articles`: Danh sách bài viết và cẩm nang y khoa có lọc theo chuyên mục và tìm kiếm từ khóa.
-  * `GET /api/v1/mobile/public/articles/<slug>`: Chi tiết bài viết y khoa theo `slug`, tự động tăng lượt xem và trả về bài viết liên quan.
-* **Xác thực (`/api/v1/mobile/auth`)**:
-  * `POST /api/v1/mobile/auth/login`: Đăng nhập bệnh nhân và nhận Bearer Token.
-  * `POST /api/v1/mobile/auth/register`: Đăng ký tài khoản bệnh nhân mới.
-  * `GET /api/v1/mobile/auth/me`: Kiểm tra phiên đăng nhập hiện tại.
-  * `POST /api/v1/mobile/auth/logout`: Đăng xuất và thu hồi phiên.
-* **Nghiệp vụ Bệnh nhân (`/api/v1/mobile/patient`)**:
-  * `GET /api/v1/mobile/patient/dashboard`: Dữ liệu tổng quan trang chủ bệnh nhân.
-  * `GET /api/v1/mobile/patient/booking-meta`: Danh mục chuyên khoa, dịch vụ khám, bác sĩ, khung giờ và ma trận ca trực (`booking_matrix`) theo ngày và chuyên khoa.
-  * `GET /api/v1/mobile/patient/appointments`: Danh sách toàn bộ lịch hẹn của bệnh nhân.
-  * `POST /api/v1/mobile/patient/appointments`: Tạo lịch hẹn khám mới.
-  * `PUT /api/v1/mobile/patient/appointments/<id>`: Đổi ngày giờ lịch hẹn.
-  * `POST /api/v1/mobile/patient/appointments/<id>/cancel`: Hủy lịch hẹn.
-  * `GET /api/v1/mobile/patient/medical-records`: Hồ sơ bệnh án điện tử, chỉ số sinh tồn và đơn thuốc.
-  * `POST /api/v1/mobile/patient/prescriptions/<id>/purchase-option`: Chọn hình thức nhận thuốc (`hospital` hoặc `outside`).
-  * `GET /api/v1/mobile/patient/lab-results`: Danh sách kết quả xét nghiệm và chẩn đoán hình ảnh đã duyệt.
-  * `GET /api/v1/mobile/patient/lab-results/<id>/image`: Tải ảnh kết quả cận lâm sàng.
-  * `GET /api/v1/mobile/patient/billing`: Danh sách hóa đơn viện phí và thông tin BHYT.
-  * `POST /api/v1/mobile/patient/billing/<id>/payment-instructions`: Lấy thông tin hướng dẫn thanh toán hóa đơn.
-  * `GET /api/v1/mobile/patient/notifications`: Danh sách thông báo và số lượng chưa đọc.
-  * `POST /api/v1/mobile/patient/notifications/read`: Đánh dấu đã đọc một thông báo hoặc tất cả thông báo.
-  * `GET` và `PUT /api/v1/mobile/patient/profile`: Xem và cập nhật hồ sơ cá nhân bệnh nhân.
-  * `POST /api/v1/mobile/patient/complete-profile`: Hoàn thiện hồ sơ bệnh nhân lần đầu.
-  * `POST /api/v1/mobile/patient/profile/avatar`: Tải lên ảnh đại diện bệnh nhân.
-  * `GET` và `POST /api/v1/mobile/patient/feedbacks`: Xem lịch sử góp ý và gửi phản hồi mới.
+### Nhóm Cổng thông tin Công khai (`/api/v1/mobile/public`)
+* `GET /api/v1/mobile/public/home`: Dữ liệu Trang chủ tinh gọn (banner, chuyên khoa, bác sĩ, bảng giá tiêu biểu, tin tức và cẩm nang).
+* `GET /api/v1/mobile/public/pricing`: Toàn bộ bảng giá dịch vụ và viện phí kèm mức giảm BHYT.
+* `GET /api/v1/mobile/public/articles`: Danh sách tin tức và cẩm nang y khoa có lọc theo chuyên mục và tìm kiếm từ khóa.
+* `GET /api/v1/mobile/public/articles/<slug>`: Chi tiết bài viết theo `slug`, tự động cộng lượt xem và trả về bài viết liên quan.
 
-## 3. Cấu trúc thư mục dự án
+### Nhóm Xác thực (`/api/v1/mobile/auth`)
+* `POST /api/v1/mobile/auth/login`: Đăng nhập bệnh nhân bằng Tên đăng nhập hoặc Số điện thoại, trả về Bearer Token.
+* `POST /api/v1/mobile/auth/register`: Đăng ký tài khoản bệnh nhân mới trực tiếp vào SQL Server.
+* `GET /api/v1/mobile/auth/me`: Kiểm tra trạng thái phiên và quyền bệnh nhân.
+* `POST /api/v1/mobile/auth/logout`: Thu hồi Bearer Token trên máy chủ và xóa phiên an toàn.
 
-Dự án đã được làm sạch toàn bộ các thư mục thừa, chỉ giữ lại kiến trúc cốt lõi rõ ràng và dễ bảo trì:
+### Nhóm Nghiệp vụ Bệnh nhân (`/api/v1/mobile/patient`)
+* `GET /api/v1/mobile/patient/dashboard`: Dữ liệu bảng điều khiển bệnh nhân và lịch hẹn sắp tới.
+* `GET /api/v1/mobile/patient/booking-meta`: Dữ liệu ma trận đặt lịch theo chuyên khoa, bác sĩ và ca trực.
+* `GET /api/v1/mobile/patient/appointments`: Danh sách toàn bộ lịch hẹn của bệnh nhân.
+* `POST /api/v1/mobile/patient/appointments`: Tạo lịch hẹn khám mới.
+* `POST /api/v1/mobile/patient/appointments/<id>/reschedule`: Đổi ngày giờ lịch hẹn theo ca trực.
+* `POST /api/v1/mobile/patient/appointments/<id>/cancel`: Hủy lịch hẹn kèm lý do.
+* `GET /api/v1/mobile/patient/records`: Hồ sơ bệnh án điện tử, chỉ số sinh tồn và danh sách đơn thuốc.
+* `POST /api/v1/mobile/patient/prescriptions/<id>/purchase-option`: Cập nhật lựa chọn nhận thuốc (`Mua tại bệnh viện` hoặc `Tự mua ngoài`).
+* `GET /api/v1/mobile/patient/lab-results`: Danh sách kết quả xét nghiệm và cận lâm sàng đã có kết luận.
+* `GET /api/v1/mobile/patient/lab-results/<id>/image`: Tải ảnh chụp kết quả xét nghiệm/CĐHA.
+* `GET /api/v1/mobile/patient/billing`: Danh sách hóa đơn viện phí và thông tin BHYT.
+* `POST /api/v1/mobile/patient/billing/<id>/instructions`: Hướng dẫn thanh toán hóa đơn viện phí.
+* `GET /api/v1/mobile/patient/notifications`: Danh sách thông báo và số lượng chưa đọc.
+* `POST /api/v1/mobile/patient/notifications/read`: Đánh dấu đã đọc thông báo.
+* `GET` và `PUT /api/v1/mobile/patient/profile`: Tra cứu và cập nhật hồ sơ cá nhân bệnh nhân.
+* `POST /api/v1/mobile/patient/complete-profile`: Hoàn thiện hồ sơ bệnh nhân bắt buộc sau đăng ký.
+* `POST /api/v1/mobile/patient/profile/avatar`: Tải lên ảnh đại diện bệnh nhân.
+* `GET` và `POST /api/v1/mobile/patient/feedbacks`: Lịch sử đánh giá và gửi phản hồi mới cho phòng khám.
+
+---
+
+## 4. Cấu trúc Thư mục Dự án
 
 ```text
 appmobi_KLCN/
-├── android/                                # Cấu hình biên dịch Android
-├── ios/                                    # Cấu hình biên dịch iOS
-├── web/                                    # Cấu hình biên dịch Web
-├── windows/                                # Cấu hình biên dịch Windows Desktop
+├── android/                                # Mã nguồn cấu hình biên dịch Android
+├── ios/                                    # Mã nguồn cấu hình biên dịch iOS
+├── web/                                    # Mã nguồn cấu hình biên dịch Web
+├── windows/                                # Mã nguồn cấu hình biên dịch Windows Desktop
 ├── lib/
-│   ├── main.dart                           # Điểm khởi chạy ứng dụng và cấu hình Provider
+│   ├── main.dart                           # Điểm khởi chạy ứng dụng và Provider
 │   ├── core/
 │   │   ├── app_colors.dart                 # Bảng màu chuẩn Y tế H2T Healthcare
-│   │   └── patient_format.dart             # Định dạng ngày giờ và tiền tệ VNĐ
+│   │   └── patient_format.dart             # Định dạng tiền tệ VNĐ và ngày giờ
 │   ├── services/
 │   │   ├── auth_service.dart               # Quản lý phiên đăng nhập và Bearer Token
-│   │   ├── patient_api_service.dart        # Kết nối REST API và đồng bộ thông báo thời gian thực
-│   │   └── notification_navigation.dart    # Điều hướng thông minh từ liên kết thông báo
+│   │   ├── patient_api_service.dart        # Kết nối REST API và đồng bộ chuông thông báo
+│   │   ├── notification_navigation.dart    # Điều hướng thông minh theo liên kết thông báo
+│   │   └── session_events.dart             # Xử lý sự kiện đăng xuất và hết hạn phiên
 │   ├── screens/
-│   │   ├── main_navigation_screen.dart     # Khung điều hướng chính và kiểm tra hồ sơ lần đầu
-│   │   ├── main_layout.dart                # Thanh điều hướng 4 phân hệ chính và bộ lắng nghe thông báo
-│   │   ├── auth_screen.dart                # Màn hình Đăng nhập và Đăng ký bệnh nhân
-│   │   ├── home_screen.dart                # Trang chủ kết hợp Bảng điều khiển Bệnh nhân, Bảng giá và Tin tức
-│   │   ├── pricing_screen.dart             # Tra cứu Bảng giá Dịch vụ và Viện phí kèm mức giảm BHYT
-│   │   ├── articles_screen.dart            # Chuyên mục Tin tức, Cẩm nang Y khoa và Đọc bài viết chi tiết
-│   │   ├── appointment_screen.dart         # Đặt lịch khám mới và Quản lý lịch hẹn của tôi
-│   │   ├── medical_records_screen.dart     # Hồ sơ bệnh án điện tử, Đơn thuốc và Sinh hiệu
+│   │   ├── main_navigation_screen.dart     # Khung điều hướng gốc và chặn hồ sơ chưa hoàn thiện
+│   │   ├── main_layout.dart                # Thanh điều hướng 4 tab chính (Trang chủ, Lịch khám, Hồ sơ bệnh án, Tài khoản)
+│   │   ├── auth_screen.dart                # Đăng nhập và Đăng ký bệnh nhân
+│   │   ├── home_screen.dart                # Trang chủ Cổng thông tin y tế với menu ngang 6 chuyên mục
+│   │   ├── pricing_screen.dart             # Tra cứu Bảng giá Dịch vụ và Viện phí có mức giảm BHYT
+│   │   ├── articles_screen.dart            # Tin tức, Cẩm nang Y khoa và Đọc chi tiết bài viết
+│   │   ├── appointment_screen.dart         # Đặt lịch khám mới và Quản lý lịch hẹn
+│   │   ├── medical_records_screen.dart     # Bệnh án điện tử EMR và Đơn thuốc
 │   │   ├── test_results_screen.dart        # Kết quả Xét nghiệm và Chẩn đoán hình ảnh
-│   │   ├── billing_screen.dart             # Thanh toán Viện phí và Khấu trừ BHYT
-│   │   ├── notifications_screen.dart       # Trung tâm Thông báo phân loại theo danh mục
-│   │   ├── profile_screen.dart             # Menu Tài khoản cá nhân và tiện ích
-│   │   ├── personal_profile_screen.dart    # Cập nhật thông tin cá nhân, BHYT, tiền sử và ảnh đại diện
-│   │   └── feedback_screen.dart            # Hòm thư Góp ý và Phản hồi chất lượng dịch vụ
+│   │   ├── billing_screen.dart             # Hóa đơn Viện phí và Khấu trừ BHYT
+│   │   ├── notifications_screen.dart       # Trung tâm Thông báo phân loại theo nhóm
+│   │   ├── profile_screen.dart             # Hồ sơ của tôi (Thẻ VIP BHYT, QR Check-in, chỉ số sinh tồn)
+│   │   ├── personal_profile_screen.dart    # Cập nhật thông tin định danh, BHYT và ảnh đại diện
+│   │   └── feedback_screen.dart            # Gửi góp ý và theo dõi phản hồi
 │   └── widgets/
-│       ├── appointment_booking_form.dart   # Biểu mẫu đặt lịch 4 bước theo ca trực và ma trận giờ
-│       ├── header_widget.dart              # Thanh tiêu đề trang chủ, hotline và chuông thông báo
-│       ├── vip_card_widget.dart            # Thẻ thông tin BHYT và nhóm máu
-│       ├── quick_services_widget.dart      # Lưới tiện ích sức khỏe và bảng chỉ số sinh tồn
-│       ├── upcoming_appointment_widget.dart# Thẻ lịch khám sắp tới trên trang chủ
-│       └── request_error.dart              # Khung hiển thị lỗi kết nối và nút thử lại
-├── test/                                   # Bộ 18 bài kiểm thử tự động (Unit, Contract và Widget Tests)
-├── pubspec.yaml                            # Khai báo thư viện và tài nguyên
-├── run_app.bat                             # Script tự động bật Backend Flask và chạy App trên Chrome
-└── README.md                               # Tài liệu hướng dẫn cài đặt và vận hành
+│       ├── appointment_booking_form.dart   # Form đặt lịch 4 bước theo ca trực và ma trận giờ
+│       ├── header_widget.dart              # Header trang chủ, hotline và chuông thông báo
+│       ├── vip_card_widget.dart            # Thẻ VIP Bệnh nhân và mã QR Check-in
+│       ├── upcoming_appointment_widget.dart# Thẻ lịch khám sắp tới
+│       └── request_error.dart              # Khung thông báo lỗi kết nối và nút thử lại
+├── test/                                   # Toàn bộ 18 bài kiểm thử tự động
+├── pubspec.yaml                            # Khai báo gói thư viện và tài nguyên
+├── run_app.bat                             # Script menu khởi chạy đa nền tảng và kiểm thử
+└── README.md                               # Tài liệu hướng dẫn sử dụng và cài đặt
 ```
 
-## 4. Yêu cầu môi trường trước khi cài đặt
+---
+
+## 5. Yêu cầu Môi trường
 
 1. **Cơ sở dữ liệu Microsoft SQL Server**:
-   * Đã cài đặt SQL Server và chạy script `database/cosodulieu.sql` (kèm `database/seed_full_data.sql` nếu cần dữ liệu mẫu) trong thư mục dự án Web `KLCN_QuanLyPhongKhamDaKhoa` để khởi tạo CSDL `quan_ly_phong_kham`.
-   * Kiểm tra thông số kết nối SQL Server trong file `KLCN_QuanLyPhongKhamDaKhoa/config.py` (`DB_SERVER`, `DB_NAME = 'quan_ly_phong_kham'`, `DB_USER`, `DB_PASSWORD`).
+   * Đã cài đặt SQL Server và khởi tạo CSDL `quan_ly_phong_kham` bằng script `database/cosodulieu.sql` (kèm `database/seed_full_data.sql` nếu muốn nạp dữ liệu mẫu) trong thư mục `KLCN_QuanLyPhongKhamDaKhoa`.
+   * Cấu hình kết nối SQL Server tại `KLCN_QuanLyPhongKhamDaKhoa/config.py` (`DB_SERVER`, `DB_NAME = 'quan_ly_phong_kham'`, `DB_USER`, `DB_PASSWORD`).
 2. **Backend Web (`KLCN_QuanLyPhongKhamDaKhoa`)**:
-   * Đã cài đặt Python 3.10 trở lên và các thư viện trong `requirements.txt` (`flask`, `pyodbc`, `werkzeug`, `pillow`).
+   * Python phiên bản 3.10 trở lên và các gói phụ thuộc: `pip install -r requirements.txt`.
 3. **Flutter SDK**:
-   * Flutter SDK phiên bản 3.x trở lên (ví dụ trên máy hiện tại: `D:\baitap\LapTrinhDiDong\flutter\bin\flutter.bat`).
+   * Flutter SDK phiên bản 3.x trở lên (đường dẫn máy: `D:\baitap\LapTrinhDiDong\flutter\bin\flutter.bat`).
 
-## 5. Hướng dẫn khởi chạy Backend và Ứng dụng trên Máy tính (PC / Laptop)
+---
 
-### Bước 1: Khởi chạy máy chủ Backend Flask (Cổng 5000)
+## 6. Hướng dẫn Khởi chạy trên Máy tính (PC / Laptop)
 
-Mở PowerShell hoặc Command Prompt, di chuyển tới thư mục dự án Web và chạy `app.py`:
+### Bước 1: Khởi động máy chủ Backend Web Flask (Cổng 5000)
+
+Mở cửa sổ PowerShell hoặc CMD, di chuyển vào thư mục dự án Web và khởi động:
 
 ```powershell
 cd "D:\baitap\Khoa Luan\KLCN_QuanLyPhongKhamDaKhoa"
 python app.py
 ```
 
-> Máy chủ Flask mặc định lắng nghe trên `http://0.0.0.0:5000` (cho phép cả máy tính cục bộ `127.0.0.1:5000` và điện thoại trong cùng mạng Wi-Fi truy cập).
+> Máy chủ Flask sẽ lắng nghe tại địa chỉ `http://0.0.0.0:5000`, sẵn sàng phục vụ cả máy tính nội bộ và điện thoại kết nối qua mạng LAN Wi-Fi.
 
 ### Bước 2: Chạy ứng dụng trên Máy tính
 
-#### Cách 1: Chạy tự động bằng file `run_app.bat` (Nhanh nhất)
-Nhấp đúp chuột vào file `run_app.bat` tại thư mục `d:\baitap\Khoa Luan\appmobi_KLCN` hoặc chạy trong terminal:
+#### Cách 1: Sử dụng Menu tự động `run_app.bat` (Đơn giản nhất)
+Nhấp đúp chuột vào file `run_app.bat` tại thư mục `d:\baitap\Khoa Luan\appmobi_KLCN` hoặc chạy qua terminal:
 
 ```powershell
 cd "D:\baitap\Khoa Luan\appmobi_KLCN"
 .\run_app.bat
 ```
 
-Script sẽ tự động kiểm tra cổng `5000`, bật Backend Flask nếu chưa chạy, tải thư viện `flutter pub get` và mở ứng dụng trên trình duyệt **Google Chrome**.
+Script sẽ tự động:
+1. Kiểm tra và tự động khởi động máy chủ Backend nếu chưa bật.
+2. Hiển thị menu cho phép chọn chạy trên Google Chrome (phím 1), Windows Desktop (phím 2), thiết bị Android (phím 3), xuất file APK (phím 4), hoặc chạy kiểm thử (phím 5).
 
-#### Cách 2: Chạy bằng dòng lệnh trên Trình duyệt Chrome hoặc Ứng dụng Windows Desktop
+#### Cách 2: Chạy trực tiếp bằng dòng lệnh Flutter
 
 ```powershell
 cd "D:\baitap\Khoa Luan\appmobi_KLCN"
@@ -155,78 +221,106 @@ flutter run -d chrome --dart-define=API_BASE_URL=http://127.0.0.1:5000
 flutter run -d windows --dart-define=API_BASE_URL=http://127.0.0.1:5000
 ```
 
-## 6. Hướng dẫn cài đặt và chạy trên Điện thoại (Máy ảo Android và Điện thoại thật)
+---
 
-### Trường hợp A: Chạy trên Máy ảo Android Emulator (Android Studio)
+## 7. Hướng dẫn Cài đặt và Khởi chạy trên Điện thoại
 
-Trên máy ảo Android Emulator, địa chỉ `10.0.2.2` được ánh xạ trực tiếp về `127.0.0.1` của máy tính chủ. Ứng dụng đã tự động cấu hình mặc định `http://10.0.2.2:5000` cho nền tảng Android:
+Ứng dụng hỗ trợ cả **Máy ảo Android Emulator** và **Điện thoại Android vật lý thật**:
 
-1. Mở **Android Studio** -> **Virtual Device Manager** và khởi động một máy ảo Android (AVD).
-2. Đảm bảo Backend Flask đang chạy ở cổng `5000` trên máy tính.
-3. Mở terminal tại thư mục `appmobi_KLCN` và chạy:
+### Trường hợp 1: Chạy trên Máy ảo Android Emulator (Android Studio)
+
+Trên máy ảo Android Emulator, địa chỉ `10.0.2.2` được hệ điều hành Android tự động ánh xạ về `127.0.0.1` của máy tính. Mã nguồn ứng dụng đã cài đặt sẵn cơ chế tự động nhận diện `10.0.2.2:5000` khi chạy trên Android Emulator.
+
+1. Mở **Android Studio** -> mở mục **Virtual Device Manager** và khởi động máy ảo Android (AVD).
+2. Bảo đảm Backend Flask đang chạy tại cổng `5000` trên máy tính.
+3. Mở terminal tại thư mục `appmobi_KLCN` và thực hiện:
 
 ```powershell
 cd "D:\baitap\Khoa Luan\appmobi_KLCN"
 flutter pub get
-flutter run --dart-define=API_BASE_URL=http://10.0.2.2:5000
+flutter run
 ```
 
-### Trường hợp B: Chạy trực tiếp trên Điện thoại Android thật (Kết nối chung mạng Wi-Fi)
+---
 
-Khi chạy trên điện thoại thật, điện thoại cần gọi về **địa chỉ IPv4 LAN** của máy tính đang chạy Backend Flask:
+### Trường hợp 2: Chạy trực tiếp trên Điện thoại Thật (Cắm cáp USB hoặc Wi-Fi)
 
-#### Bước 1: Lấy địa chỉ IPv4 của máy tính
-Mở PowerShell trên máy tính và chạy:
+Khi chạy trên điện thoại thật, điện thoại và máy tính cần kết nối **chung một mạng Wi-Fi**, và điện thoại sẽ gọi API qua **địa chỉ IP LAN của máy tính**:
+
+#### Bước 2.1: Lấy địa chỉ IPv4 LAN của máy tính
+Mở PowerShell trên máy tính và chạy lệnh:
 
 ```powershell
 ipconfig
 ```
 
-Tìm dòng **IPv4 Address** thuộc mạng Wi-Fi đang kết nối (ví dụ: `192.168.1.15`).
+Tìm dòng **IPv4 Address** của card mạng Wi-Fi đang kết nối (ví dụ: `192.168.1.15`).
 
-#### Bước 2: Mở cổng 5000 trên Windows Firewall (nếu lần đầu kết nối từ điện thoại)
-Chạy lệnh sau trong PowerShell (quyền Administrator) để cho phép điện thoại gọi vào cổng `5000`:
+#### Bước 2.2: Mở cổng 5000 trên tường lửa Windows Firewall
+Để Windows không chặn các kết nối từ điện thoại vào máy chủ Flask, chạy lệnh sau trong PowerShell (bằng quyền Administrator):
 
 ```powershell
 New-NetFirewallRule -DisplayName "H2T Flask Backend 5000" -Direction Inbound -LocalPort 5000 -Protocol TCP -Action Allow
 ```
 
-#### Bước 3: Kết nối điện thoại và chạy ứng dụng
-1. Bật **Chế độ nhà phát triển (Developer Options)** và **Gỡ lỗi USB (USB Debugging)** trên điện thoại Android, sau đó cắm cáp USB vào máy tính (hoặc dùng Wireless Debugging).
-2. Kiểm tra thiết bị đã nhận diện bằng lệnh `flutter devices`.
-3. Chạy ứng dụng với địa chỉ IP LAN của máy tính (thay `192.168.1.15` bằng IP thực tế ở Bước 1):
+#### Bước 2.3: Bật chế độ Gỡ lỗi USB trên Điện thoại
+1. Trên điện thoại Android, vào **Cài đặt** -> **Thông tin điện thoại** -> Chạm 7 lần vào mục **Số bản dựng (Build Number)** để kích hoạt quyền Nhà phát triển.
+2. Vào **Cài đặt cho nhà phát triển** -> Bật mục **Gỡ lỗi qua USB (USB Debugging)**.
+3. Cắm cáp USB kết nối điện thoại vào máy tính (chọn "Luôn cho phép gỡ lỗi từ máy tính này" trên màn hình điện thoại).
+
+#### Bước 2.4: Khởi chạy ứng dụng lên Điện thoại
+Kiểm tra danh sách thiết bị đã nhận:
 
 ```powershell
-cd "D:\baitap\Khoa Luan\appmobi_KLCN"
-flutter run -d <MA_THIET_BI_DIEN_THOAI> --dart-define=API_BASE_URL=http://192.168.1.15:5000
+flutter devices
 ```
 
-#### Bước 4 (Tùy chọn): Xuất file cài đặt `.apk` để cài đặt độc lập lên điện thoại
-Nếu muốn đóng gói thành file `.apk` để gửi qua Zalo/Google Drive hoặc chép vào điện thoại cài đặt trực tiếp:
+Khởi chạy ứng dụng lên điện thoại với IP LAN của máy tính (thay `192.168.1.15` bằng IP thực tế ở Bước 2.1):
 
 ```powershell
 cd "D:\baitap\Khoa Luan\appmobi_KLCN"
+flutter run --dart-define=API_BASE_URL=http://192.168.1.15:5000
+```
+
+---
+
+### Trường hợp 3: Xuất file cài đặt APK độc lập để cài lên nhiều Điện thoại
+
+Nếu muốn đóng gói thành file cài đặt độc lập để gửi qua Zalo, Google Drive hoặc sao chép vào bộ nhớ điện thoại để cài đặt mà không cần máy tính:
+
+```powershell
+cd "D:\baitap\Khoa Luan\appmobi_KLCN"
+
+# Biên dịch file APK Release kèm địa chỉ máy chủ Flask LAN
 flutter build apk --release --dart-define=API_BASE_URL=http://192.168.1.15:5000
 ```
 
-Sau khi biên dịch hoàn tất, file cài đặt nằm tại:
-`build/app/outputs/flutter-apk/app-release.apk`
+Sau khi quá trình biên dịch hoàn tất, file cài đặt APK nằm tại đường dẫn:
+```text
+build\app\outputs\flutter-apk\app-release.apk
+```
 
-## 7. Tài khoản Bệnh nhân mẫu và Kiểm thử tự động
+Chép file `app-release.apk` vào điện thoại, mở file trên điện thoại và chọn **Cài đặt (Install)** để sử dụng.
 
-### Tài khoản Bệnh nhân mẫu trong CSDL (`quan_ly_phong_kham`)
+---
+
+## 8. Tài khoản Mẫu và Kiểm thử Tự động
+
+### Tài khoản Bệnh nhân có sẵn trong Cơ sở dữ liệu mẫu
 * **Tên đăng nhập / Số điện thoại**: `bn_1` hoặc `0901234561`
 * **Mật khẩu**: `123456`
-* Ngoài ra có thể nhấn **Đăng ký ngay** ngay trên màn hình đăng nhập của ứng dụng để tạo tài khoản bệnh nhân mới trực tiếp vào SQL Server.
+* Hoặc có thể nhấn **Đăng ký ngay** trên màn hình Đăng nhập của ứng dụng để tự tạo tài khoản bệnh nhân mới trực tiếp vào SQL Server.
 
-### Chạy phân tích mã nguồn và kiểm thử tự động
+### Chạy Kiểm tra Chất lượng Mã nguồn và Bộ Kiểm thử Tự động
+
+Mã nguồn được duy trì ở tiêu chuẩn cao nhất, không có cảnh báo và vượt qua 100% các bài test:
 
 ```powershell
 cd "D:\baitap\Khoa Luan\appmobi_KLCN"
 
-# Kiểm tra chất lượng mã nguồn (Static Analysis)
+# 1. Kiểm tra tĩnh mã nguồn (phải đạt 'No issues found!')
 flutter analyze --no-pub
 
-# Chạy toàn bộ 18 bài kiểm thử tự động (Unit, API Contract và Widget Tests)
+# 2. Chạy toàn bộ 18 bài kiểm thử tự động (Unit Tests, Contract Tests, Widget Tests)
 flutter test --no-pub
 ```
