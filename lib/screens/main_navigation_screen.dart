@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:provider/provider.dart';
 import 'package:appmobi/core/app_colors.dart';
+import 'package:appmobi/core/app_animations.dart';
 import 'package:appmobi/services/auth_service.dart';
 import 'package:appmobi/services/patient_api_service.dart';
 import 'package:appmobi/services/sound_service.dart';
@@ -175,9 +176,10 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
       children: [
         Scaffold(
           body: SafeArea(
-            child: IndexedStack(
-              index: _currentIndex,
-              children: pages,
+            child: AppTabTransition(
+              switchKey: ValueKey<int>(_currentIndex),
+              duration: const Duration(milliseconds: 380),
+              child: pages[_currentIndex],
             ),
           ),
           bottomNavigationBar: BottomNavigationBar(
@@ -212,9 +214,13 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
           SafeArea(
             child: Align(
               alignment: Alignment.topCenter,
-              child: Padding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              child: AppSlideFade(
+                direction: SlideDirection.fromTop,
+                distance: 28,
+                duration: AppAnimations.slow,
+                child: Padding(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                 child: Material(
                   color: Colors.transparent,
                   child: InkWell(
@@ -387,6 +393,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                 ),
               ),
             ),
+          ),
           ),
       ],
     );
