@@ -287,7 +287,7 @@ class _AuthScreenState extends State<AuthScreen> {
                                   : 'Tên đăng nhập hoặc số điện thoại',
                               hint: _isRegistering
                                   ? 'Nhập số điện thoại 10 số'
-                                  : 'VD: 0901234561 hoặc bn_1',
+                                  : 'VD: 0901234561 hoặc hoangbaonam',
                               icon: Icons.phone_android_rounded,
                               keyboardType: TextInputType.phone,
                               textInputAction: TextInputAction.next,

@@ -171,7 +171,8 @@ Nhấp đúp chuột vào tệp [run_app.bat](file:///d:/baitap/Khoa%20Luan/appm
 
 ## 5. Tài khoản Bệnh nhân Mẫu để Kiểm tra
 
-* **Tên đăng nhập / Số điện thoại**: `bn_1` hoặc `0901234561`
+* **Số điện thoại / Tên đăng nhập**: `0901234561` hoặc `hoangbaonam` (Bệnh nhân: Hoàng Bảo Nam, có sẵn 274 thông báo và 57 lịch hẹn trong CSDL)
+* **Các tài khoản khác trong CSDL**: `0901234562` (Trần Thị Thu Hà), `0901234563` (Nguyễn Văn Hùng)
 * **Mật khẩu**: `123456`
 * Hoặc có thể nhấn **Đăng ký ngay** trên màn hình Đăng nhập của ứng dụng để tự tạo tài khoản bệnh nhân mới trực tiếp vào SQL Server.
 
