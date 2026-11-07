@@ -46,7 +46,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
 
   Win32Window::Point origin(pos_x > 0 ? pos_x : 20, pos_y > 0 ? pos_y : 20);
   Win32Window::Size size(win_width, win_height);
-  if (!window.Create(L"H2T Healthcare - Bệnh Nhân", origin, size)) {
+  if (!window.Create(L"H2T Healthcare - B\u1EC7nh Nh\u00E2n", origin, size)) {
     return EXIT_FAILURE;
   }
   window.SetQuitOnClose(true);

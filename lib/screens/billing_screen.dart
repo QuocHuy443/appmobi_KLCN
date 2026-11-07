@@ -7,6 +7,7 @@ import '../core/app_colors.dart';
 import '../services/auth_service.dart';
 import '../services/patient_api_service.dart';
 import 'auth_screen.dart';
+import 'payment_qr_screen.dart';
 
 class BillingScreen extends StatefulWidget {
   const BillingScreen({super.key});
@@ -91,12 +92,39 @@ class _BillingScreenState extends State<BillingScreen> {
       final data = await _apiService.paymentInstructions(token, inv['id'] as int);
       if (!mounted || context.read<AuthViewModel>().currentUser?.token != token) return;
       final payment = data['payment'] as Map;
-      await showDialog<void>(context: context, builder: (ctx) => AlertDialog(
-        title: const Text('Hướng dẫn thanh toán'),
-        content: Text('Hóa đơn: ${payment['ma_hoa_don']}\nSố tiền: ${_formatVnd(payment['amount'])}\n\n${data['message']}'),
-        actions: [TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Đã hiểu'))]));
+      final paidInvoice = await Navigator.push<Map<String, dynamic>>(context,
+        MaterialPageRoute(builder: (_) => PaymentQrScreen(
+          token: token, payment: Map<String, dynamic>.from(payment), api: _apiService)));
+      if (!mounted || paidInvoice == null) {
+        return;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text('Thanh toán thành công!'), backgroundColor: AppColors.medical600));
+      await _loadBilling(token);
+      if (!mounted) return;
+      await Navigator.push<void>(context, MaterialPageRoute(
+        builder: (_) => BillScreen(invoice: paidInvoice)));
     } catch (e) { if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString().replaceFirst('Exception: ', '')))); }
     finally { if (mounted) setState(() => _paymentLoading = false); }
+  }
+
+  Future<void> _showPaidBill(Map<String, dynamic> inv) async {
+    final token = context.read<AuthViewModel>().currentUser?.token;
+    if (token == null) return;
+    try {
+      final data = await _apiService.paymentStatus(token, (inv['id'] as num).toInt());
+      if (!mounted) return;
+      if (data['status'] != 'PAID' || data['invoice'] is! Map) {
+        throw Exception('Hóa đơn chưa được xác nhận thanh toán.');
+      }
+      await Navigator.push<void>(context, MaterialPageRoute(
+        builder: (_) => BillScreen(invoice: Map<String, dynamic>.from(data['invoice'] as Map))));
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(error.toString().replaceFirst('Exception: ', ''))));
+      }
+    }
   }
 
   Future<void> _exportCsv(String token) async {
@@ -462,7 +490,7 @@ class _BillingScreenState extends State<BillingScreen> {
           _buildFeeRow('Tổng chi phí gốc', _formatVnd(tongTien)),
           const SizedBox(height: 6),
           _buildFeeRow(
-            'BHYT chi trả (80%)',
+            'BHYT giảm trừ',
             '- ${_formatVnd(tienBhyt)}',
             isDiscount: true,
           ),
@@ -501,7 +529,7 @@ class _BillingScreenState extends State<BillingScreen> {
                   color: Colors.white,
                 ),
                 label: const Text(
-                  'Thanh toán qua VietQR / Quầy thu ngân',
+                  'Thanh toán VietQR',
                   style: TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.bold,
@@ -516,6 +544,13 @@ class _BillingScreenState extends State<BillingScreen> {
                 ),
               ),
             ),
+          ] else ...[
+            const SizedBox(height: 16),
+            SizedBox(width: double.infinity, child: OutlinedButton.icon(
+              onPressed: () => _showPaidBill(inv),
+              icon: const Icon(Icons.receipt_long),
+              label: const Text('Xem / Lưu Bill'),
+            )),
           ],
         ],
       ),

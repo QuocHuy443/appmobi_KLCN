@@ -27,6 +27,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Map<String, dynamic>? _dashboardData;
   Map<String, dynamic>? _publicHomeData;
   bool _loadingPublic = true;
+  String? _publicError;
   String? _error;
 
   int _selectedTabIndex = 0;
@@ -96,12 +97,13 @@ class _HomeScreenState extends State<HomeScreen> {
       setState(() {
         _publicHomeData = data;
         _loadingPublic = false;
+        _publicError = null;
       });
-    } catch (_) {
-      // Giữ trang chủ hoạt động mượt ngay cả khi chưa kết nối được máy chủ
+    } catch (error) {
       if (mounted) {
         setState(() {
           _loadingPublic = false;
+          _publicError = 'Không tải được dữ liệu phòng khám. Kiểm tra máy chủ API và thử lại.';
         });
       }
     }
@@ -2207,7 +2209,7 @@ class _HomeScreenState extends State<HomeScreen> {
           )
         : null;
     final unreadNotifs = (_dashboardData?['unread_notifications'] as int?) ?? 0;
-    final error = _error ??
+    final error = _publicError ?? _error ??
         (user == null ? context.watch<AuthViewModel>().errorMessage : null);
 
     final banners = List<Map<String, dynamic>>.from(
@@ -2277,12 +2279,14 @@ class _HomeScreenState extends State<HomeScreen> {
                             borderRadius: BorderRadius.circular(12),
                             border: Border.all(color: Colors.amber.shade200),
                           ),
-                          child: Text(
-                            error,
-                            style: TextStyle(
-                              color: Colors.amber.shade900,
-                              fontSize: 12,
-                            ),
+                          child: Row(
+                            children: [
+                              Expanded(child: Text(
+                                error,
+                                style: TextStyle(color: Colors.amber.shade900, fontSize: 12),
+                              )),
+                              TextButton(onPressed: _fetchPublicHome, child: const Text('Thử lại')),
+                            ],
                           ),
                         ),
                       AppTabTransition(

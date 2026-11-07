@@ -40,18 +40,23 @@ class PatientApiService {
     _dio.options.followRedirects = false;
     _dio.interceptors.add(InterceptorsWrapper(onRequest: (options, handler) {
       final uri = options.uri;
-      if (uri.userInfo.isNotEmpty || !['http', 'https'].contains(uri.scheme) ||
-          (kReleaseMode && uri.scheme != 'https')) {
-        handler.reject(DioException(requestOptions: options, message: 'Backend phải dùng HTTPS trong bản phát hành.'));
+      if (!AuthRepositoryImpl.isAllowedApiUrl(uri)) {
+        handler.reject(DioException(
+            requestOptions: options,
+            message: 'Backend phải dùng HTTPS trong bản phát hành.'));
       } else {
         handler.next(options);
       }
     }, onError: (error, handler) {
-      final authorization = error.requestOptions.headers['Authorization']?.toString() ?? '';
+      final authorization =
+          error.requestOptions.headers['Authorization']?.toString() ?? '';
       final data = error.response?.data;
       if (authorization.startsWith('Bearer ') &&
-          (error.response?.statusCode == 401 || data is Map && data['error_code'] == 'PROFILE_REQUIRED')) {
-        SessionEvents.reject(authorization.substring(7), profileRequired: data is Map && data['error_code'] == 'PROFILE_REQUIRED');
+          (error.response?.statusCode == 401 ||
+              data is Map && data['error_code'] == 'PROFILE_REQUIRED')) {
+        SessionEvents.reject(authorization.substring(7),
+            profileRequired:
+                data is Map && data['error_code'] == 'PROFILE_REQUIRED');
       }
       handler.next(error);
     }, onResponse: (response, handler) {
@@ -61,7 +66,8 @@ class PatientApiService {
             response: response,
             type: DioExceptionType.badResponse));
       } else {
-        if (['POST', 'PUT', 'PATCH', 'DELETE'].contains(response.requestOptions.method)) {
+        if (['POST', 'PUT', 'PATCH', 'DELETE']
+            .contains(response.requestOptions.method)) {
           dataRevision.value++;
         }
         handler.next(response);
@@ -277,12 +283,16 @@ class PatientApiService {
     }
   }
 
-  Future<List<Map<String, dynamic>>> getNotifications(String token, {String tab = 'all', bool unreadOnly = false}) async {
+  Future<List<Map<String, dynamic>>> getNotifications(String token,
+      {String tab = 'all', bool unreadOnly = false}) async {
     final revision = ++_notificationRevision;
     try {
       final res = await _dio.get(
         '/api/v1/mobile/patient/notifications',
-        queryParameters: {if (tab != 'all') 'tab': tab, if (unreadOnly) 'unread': '1'},
+        queryParameters: {
+          if (tab != 'all') 'tab': tab,
+          if (unreadOnly) 'unread': '1'
+        },
         options: _authOptions(token),
       );
       final data = Map<String, dynamic>.from(res.data as Map);
@@ -293,7 +303,9 @@ class PatientApiService {
         item['da_xem'] = isNotificationRead(item);
       }
       _publishNotifications(token, revision, items);
-      if (notificationToken == token && revision == _notificationRevision && data['unread_count'] is int) {
+      if (notificationToken == token &&
+          revision == _notificationRevision &&
+          data['unread_count'] is int) {
         unreadCountNotifier.value = data['unread_count'] as int;
       }
       return items;
@@ -407,58 +419,103 @@ class PatientApiService {
 
   Future<Map<String, dynamic>> getProfileBundle(String token) async {
     try {
-      final response = await _dio.get('/api/v1/mobile/patient/profile', options: _authOptions(token));
+      final response = await _dio.get('/api/v1/mobile/patient/profile',
+          options: _authOptions(token));
       return Map<String, dynamic>.from(response.data as Map);
-    } on DioException catch (e) { throw Exception(_extractError(e)); }
+    } on DioException catch (e) {
+      throw Exception(_extractError(e));
+    }
   }
 
-  Future<void> completeProfile(String token, Map<String, dynamic> profile) async {
+  Future<void> completeProfile(
+      String token, Map<String, dynamic> profile) async {
     try {
-      await _dio.post('/api/v1/mobile/patient/complete-profile', data: profile, options: _authOptions(token));
-    } on DioException catch (e) { throw Exception(_extractError(e)); }
+      await _dio.post('/api/v1/mobile/patient/complete-profile',
+          data: profile, options: _authOptions(token));
+    } on DioException catch (e) {
+      throw Exception(_extractError(e));
+    }
   }
 
-  Future<void> uploadAvatar(String token, {Uint8List? bytes, String? filename, String? url}) async {
+  Future<void> uploadAvatar(String token,
+      {Uint8List? bytes, String? filename, String? url}) async {
     if (bytes != null && (bytes.isEmpty || bytes.length > 8 * 1024 * 1024)) {
       throw Exception('Ảnh phải có dung lượng từ 1 byte đến 8 MiB.');
     }
     try {
       final form = FormData.fromMap({
-        if (bytes != null) 'avatar_file': MultipartFile.fromBytes(bytes, filename: filename ?? 'avatar.jpg'),
+        if (bytes != null)
+          'avatar_file': MultipartFile.fromBytes(bytes,
+              filename: filename ?? 'avatar.jpg'),
         if (url != null) 'avatar_url': url,
       });
-      await _dio.post('/api/v1/mobile/patient/profile/avatar', data: form, options: _authOptions(token));
-    } on DioException catch (e) { throw Exception(_extractError(e)); }
+      await _dio.post('/api/v1/mobile/patient/profile/avatar',
+          data: form, options: _authOptions(token));
+    } on DioException catch (e) {
+      throw Exception(_extractError(e));
+    }
   }
 
-  Future<Map<String, dynamic>> paymentInstructions(String token, int invoiceId) async {
+  Future<Map<String, dynamic>> paymentInstructions(
+      String token, int invoiceId) async {
     try {
-      final response = await _dio.post('/api/v1/mobile/patient/billing/$invoiceId/instructions', options: _authOptions(token));
+      final response = await _dio.post(
+          '/api/v1/mobile/patient/billing/$invoiceId/instructions',
+          options: _authOptions(token));
       return Map<String, dynamic>.from(response.data as Map);
-    } on DioException catch (e) { throw Exception(_extractError(e)); }
+    } on DioException catch (e) {
+      throw Exception(_extractError(e));
+    }
+  }
+
+  Future<Map<String, dynamic>> paymentStatus(
+      String token, int invoiceId) async {
+    try {
+      final response = await _dio.get('/api/payment/status/$invoiceId',
+          options: _authOptions(token));
+      return Map<String, dynamic>.from(response.data as Map);
+    } on DioException catch (e) {
+      throw Exception(_extractError(e));
+    }
   }
 
   Future<Uint8List> getLabImage(String token, int resultId) async {
     try {
-      final response = await _dio.get<List<int>>('/api/v1/mobile/patient/lab-results/$resultId/image',
-        options: _authOptions(token)..responseType = ResponseType.bytes);
+      final response = await _dio.get<List<int>>(
+          '/api/v1/mobile/patient/lab-results/$resultId/image',
+          options: _authOptions(token)..responseType = ResponseType.bytes);
       return Uint8List.fromList(response.data!);
-    } on DioException catch (e) { throw Exception(_extractError(e)); }
+    } on DioException catch (e) {
+      throw Exception(_extractError(e));
+    }
   }
 
   static String? avatarUrl(dynamic path) {
-    if (path is! String || !path.startsWith('/static/uploads/benh_nhan/') ||
-        path.contains('..') || path.contains('%') || path.contains('\\')) { return null; }
-    return Uri.parse(AuthRepositoryImpl.defaultBaseUrl).resolve(path).toString();
+    if (path is! String ||
+        !path.startsWith('/static/uploads/benh_nhan/') ||
+        path.contains('..') ||
+        path.contains('%') ||
+        path.contains('\\')) {
+      return null;
+    }
+    return Uri.parse(AuthRepositoryImpl.defaultBaseUrl)
+        .resolve(path)
+        .toString();
   }
 
   static String? mediaUrl(dynamic path) {
     if (path is! String) return null;
     final clean = path.trim();
-    if (clean.isEmpty || clean.contains('..') || clean.contains('\\')) return null;
-    if (clean.startsWith('http://') || clean.startsWith('https://')) return clean;
+    if (clean.isEmpty || clean.contains('..') || clean.contains('\\')) {
+      return null;
+    }
+    if (clean.startsWith('http://') || clean.startsWith('https://')) {
+      return clean;
+    }
     if (clean.startsWith('/static/')) {
-      return Uri.parse(AuthRepositoryImpl.defaultBaseUrl).resolve(clean).toString();
+      return Uri.parse(AuthRepositoryImpl.defaultBaseUrl)
+          .resolve(clean)
+          .toString();
     }
     return null;
   }
@@ -547,10 +604,24 @@ class PatientApiService {
     try {
       final res = await _dio.post(
         '/api/v1/mobile/auth/forgot-password/send-otp',
-        data: {'identifier': identifier.trim()},
+        data: {'email': identifier.trim()},
         options: Options(receiveTimeout: const Duration(seconds: 45)),
       );
       return Map<String, dynamic>.from(res.data as Map);
+    } on DioException catch (e) {
+      throw Exception(_extractError(e));
+    }
+  }
+
+  Future<void> verifyForgotPasswordOtp({
+    required String email,
+    required String otpCode,
+  }) async {
+    try {
+      await _dio.post(
+        '/api/v1/mobile/auth/forgot-password/verify-otp',
+        data: {'email': email.trim(), 'otp_code': otpCode.trim()},
+      );
     } on DioException catch (e) {
       throw Exception(_extractError(e));
     }
@@ -560,14 +631,16 @@ class PatientApiService {
     required String identifier,
     required String otpCode,
     required String newPassword,
+    required String confirmPassword,
   }) async {
     try {
       final res = await _dio.post(
         '/api/v1/mobile/auth/forgot-password/reset',
         data: {
-          'identifier': identifier.trim(),
+          'email': identifier.trim(),
           'otp_code': otpCode.trim(),
           'new_password': newPassword,
+          'confirm_password': confirmPassword,
         },
         options: Options(receiveTimeout: const Duration(seconds: 45)),
       );

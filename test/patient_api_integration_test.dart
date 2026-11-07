@@ -160,6 +160,7 @@ void main() {
         identifier: 'person@example.com',
         otpCode: '123456',
         newPassword: 'new-password',
+        confirmPassword: 'new-password',
       ),
       'Đổi mật khẩu thành công.',
     );

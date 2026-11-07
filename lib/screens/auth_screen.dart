@@ -4,6 +4,7 @@ import '../core/app_colors.dart';
 import '../services/auth_service.dart';
 import '../services/patient_api_service.dart';
 import 'main_navigation_screen.dart';
+import 'forgot_password_screen.dart';
 
 enum AuthMode { login, register }
 
@@ -313,7 +314,7 @@ class _AuthScreenState extends State<AuthScreen> {
                             _buildField(
                               controller: _passwordController,
                               label: 'Mật khẩu',
-                              hint: 'Nhập mật khẩu (mẫu: 123456)',
+                              hint: 'Nhập mật khẩu',
                               icon: Icons.lock_outline_rounded,
                               obscureText: _obscurePassword,
                               textInputAction: TextInputAction.done,
@@ -337,43 +338,68 @@ class _AuthScreenState extends State<AuthScreen> {
                               onFieldSubmitted: (_) => _submit(),
                             ),
                             if (!_isRegistering) ...[
-                              const SizedBox(height: 6),
+                              const SizedBox(height: 12),
                               Row(
                                 children: [
                                   Expanded(
-                                    child: TextButton(
+                                    child: OutlinedButton.icon(
                                       onPressed: _showChangePasswordDialog,
-                                      style: TextButton.styleFrom(
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 4,
-                                          vertical: 4,
+                                      icon: const Icon(Icons.key_rounded,
+                                          size: 17),
+                                      label: const Text(
+                                        'Đổi mật khẩu',
+                                        maxLines: 1,
+                                        style: TextStyle(
+                                          fontSize: 12.5,
+                                          fontWeight: FontWeight.w700,
                                         ),
                                       ),
-                                      child: const Text(
-                                        'Đổi mật khẩu',
-                                        style: TextStyle(
-                                          color: AppColors.slate600,
-                                          fontSize: 13,
-                                          fontWeight: FontWeight.w600,
+                                      style: OutlinedButton.styleFrom(
+                                        foregroundColor: AppColors.medical700,
+                                        backgroundColor: AppColors.medical50,
+                                        side: const BorderSide(
+                                          color: AppColors.medical200,
+                                        ),
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 6,
+                                          vertical: 10,
+                                        ),
+                                        minimumSize: const Size.fromHeight(44),
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius:
+                                              BorderRadius.circular(12),
                                         ),
                                       ),
                                     ),
                                   ),
+                                  const SizedBox(width: 8),
                                   Expanded(
-                                    child: TextButton(
-                                      onPressed: _showForgotPasswordDialog,
-                                      style: TextButton.styleFrom(
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 4,
-                                          vertical: 4,
+                                    child: OutlinedButton.icon(
+                                      onPressed: _openForgotPassword,
+                                      icon: const Icon(Icons.lock_reset_rounded,
+                                          size: 17),
+                                      label: const Text(
+                                        'Quên mật khẩu?',
+                                        maxLines: 1,
+                                        style: TextStyle(
+                                          fontSize: 12.5,
+                                          fontWeight: FontWeight.w700,
                                         ),
                                       ),
-                                      child: const Text(
-                                        'Quên mật khẩu?',
-                                        style: TextStyle(
-                                          color: AppColors.medical700,
-                                          fontSize: 13.5,
-                                          fontWeight: FontWeight.w700,
+                                      style: OutlinedButton.styleFrom(
+                                        foregroundColor: AppColors.medical700,
+                                        backgroundColor: AppColors.medical50,
+                                        side: const BorderSide(
+                                          color: AppColors.medical200,
+                                        ),
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 6,
+                                          vertical: 10,
+                                        ),
+                                        minimumSize: const Size.fromHeight(44),
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius:
+                                              BorderRadius.circular(12),
                                         ),
                                       ),
                                     ),
@@ -644,180 +670,21 @@ class _AuthScreenState extends State<AuthScreen> {
         '${selected.day.toString().padLeft(2, '0')}';
   }
 
-  Future<void> _showForgotPasswordDialog() async {
-    final api = PatientApiService();
-    final idController =
-        TextEditingController(text: _identifierController.text.trim());
-    final otpController = TextEditingController();
-    final newPassController = TextEditingController();
-    bool otpSent = false;
-    bool busy = false;
-    String? errorMsg;
-    String? infoMsg;
-
-    await showDialog<void>(
-      context: context,
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setDialogState) => AlertDialog(
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          title: const Text(
-            'Khôi phục mật khẩu OTP',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-          ),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                TextField(
-                  controller: idController,
-                  enabled: !busy,
-                  decoration: const InputDecoration(
-                    labelText: 'Số điện thoại hoặc Email đã đăng ký',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-                if (otpSent) ...[
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: otpController,
-                    enabled: !busy,
-                    keyboardType: TextInputType.number,
-                    maxLength: 6,
-                    decoration: const InputDecoration(
-                      labelText: 'Mã OTP (6 chữ số)',
-                      border: OutlineInputBorder(),
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  TextField(
-                    controller: newPassController,
-                    enabled: !busy,
-                    obscureText: true,
-                    decoration: const InputDecoration(
-                      labelText: 'Mật khẩu mới (tối thiểu 6 ký tự)',
-                      border: OutlineInputBorder(),
-                    ),
-                  ),
-                ],
-                if (infoMsg != null) ...[
-                  const SizedBox(height: 10),
-                  Text(
-                    infoMsg!,
-                    style: const TextStyle(
-                      color: AppColors.medical700,
-                      fontSize: 12.5,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ],
-                if (errorMsg != null) ...[
-                  const SizedBox(height: 10),
-                  Text(
-                    errorMsg!,
-                    style: const TextStyle(
-                      color: Colors.red,
-                      fontSize: 12.5,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ],
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: busy ? null : () => Navigator.pop(ctx),
-              child: const Text('Đóng'),
-            ),
-            if (otpSent)
-              TextButton(
-                onPressed: busy
-                    ? null
-                    : () async {
-                        setDialogState(() {
-                          busy = true;
-                          errorMsg = null;
-                        });
-                        try {
-                          final res = await api
-                              .sendForgotPasswordOtp(idController.text);
-                          setDialogState(() {
-                            busy = false;
-                            infoMsg = (res['message'] ?? 'Đã gửi lại mã OTP.')
-                                .toString();
-                          });
-                        } catch (e) {
-                          setDialogState(() {
-                            busy = false;
-                            errorMsg =
-                                e.toString().replaceFirst('Exception: ', '');
-                          });
-                        }
-                      },
-                child: const Text('Gửi lại mã'),
-              ),
-            FilledButton(
-              onPressed: busy
-                  ? null
-                  : () async {
-                      setDialogState(() {
-                        busy = true;
-                        errorMsg = null;
-                      });
-                      try {
-                        if (!otpSent) {
-                          final res = await api
-                              .sendForgotPasswordOtp(idController.text);
-                          setDialogState(() {
-                            busy = false;
-                            otpSent = true;
-                            infoMsg = (res['message'] ??
-                                    'Mã OTP đã được gửi. Vui lòng nhập mã OTP và mật khẩu mới.')
-                                .toString();
-                          });
-                        } else {
-                          final msg = await api.resetForgotPassword(
-                            identifier: idController.text,
-                            otpCode: otpController.text,
-                            newPassword: newPassController.text,
-                          );
-                          if (!ctx.mounted) return;
-                          Navigator.pop(ctx);
-                          if (!mounted) return;
-                          _identifierController.text = idController.text.trim();
-                          _passwordController.text = newPassController.text;
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              backgroundColor: AppColors.medical600,
-                              content: Text(msg),
-                            ),
-                          );
-                        }
-                      } catch (e) {
-                        setDialogState(() {
-                          busy = false;
-                          errorMsg =
-                              e.toString().replaceFirst('Exception: ', '');
-                        });
-                      }
-                    },
-              child: Text(
-                busy
-                    ? 'Đang xử lý...'
-                    : otpSent
-                        ? 'Xác nhận đặt lại'
-                        : 'Gửi mã OTP',
-              ),
-            ),
-          ],
+  Future<void> _openForgotPassword() async {
+    final message = await Navigator.of(context).push<String>(
+      MaterialPageRoute(
+        builder: (_) => ForgotPasswordScreen(
+          initialEmail: _identifierController.text.contains('@')
+              ? _identifierController.text.trim()
+              : '',
         ),
       ),
     );
-    idController.dispose();
-    otpController.dispose();
-    newPassController.dispose();
+    if (!mounted || message == null) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      backgroundColor: AppColors.medical600,
+      content: Text(message),
+    ));
   }
 
   Future<void> _showChangePasswordDialog() async {
@@ -867,7 +734,8 @@ class _AuthScreenState extends State<AuthScreen> {
                   enabled: !busy,
                   obscureText: true,
                   decoration: const InputDecoration(
-                    labelText: 'Mật khẩu mới (tối thiểu 6 ký tự)',
+                    labelText: 'Mật khẩu mới',
+                    helperText: 'Tối thiểu 6 ký tự',
                     border: OutlineInputBorder(),
                   ),
                 ),

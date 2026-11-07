@@ -23,7 +23,6 @@ class _PricingScreenState extends State<PricingScreen> {
   late int? _selectedDeptId = widget.initialDepartmentId;
   List<Map<String, dynamic>> _departmentsPricing = [];
   int _totalServices = 0;
-  num _insuranceReduction = 0;
 
   @override
   void initState() {
@@ -52,7 +51,6 @@ class _PricingScreenState extends State<PricingScreen> {
       setState(() {
         _departmentsPricing = depts;
         _totalServices = (data['total_services'] as num?)?.toInt() ?? 0;
-        _insuranceReduction = (data['insurance_reduction'] as num?) ?? 0;
         _loading = false;
       });
     } catch (e) {
@@ -271,11 +269,9 @@ class _PricingScreenState extends State<PricingScreen> {
             ),
           ),
           const SizedBox(height: 6),
-          Text(
-            _insuranceReduction > 0
-                ? 'Công khai toàn bộ biểu giá dịch vụ kỹ thuật y tế và mức hỗ trợ BHYT mô phỏng (${patientMoney(_insuranceReduction)} trên hóa đơn).'
-                : 'Công khai toàn bộ biểu giá dịch vụ kỹ thuật y tế, viện phí khám bệnh và mức hỗ trợ BHYT theo quy định.',
-            style: const TextStyle(
+          const Text(
+            'Công khai biểu giá dịch vụ kỹ thuật y tế, viện phí khám bệnh và mức hỗ trợ BHYT của từng dịch vụ.',
+            style: TextStyle(
               color: Color(0xFFCBD5E1),
               fontSize: 12.5,
               height: 1.4,

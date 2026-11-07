@@ -71,6 +71,15 @@ class AuthRepositoryImpl implements AuthRepository {
     return 'http://127.0.0.1:5000';
   }
 
+  static bool isAllowedApiUrl(Uri? uri) {
+    if (uri == null || !uri.hasAuthority || uri.userInfo.isNotEmpty ||
+        !['http', 'https'].contains(uri.scheme)) {
+      return false;
+    }
+    final local = uri.host == 'localhost' || uri.host == '127.0.0.1';
+    return !kReleaseMode || uri.scheme == 'https' || local;
+  }
+
   final FlutterSecureStorage secureStorage;
   final Dio _dio;
   final DateTime Function() _now;
@@ -96,11 +105,7 @@ class AuthRepositoryImpl implements AuthRepository {
 
   void _checkEndpoint() {
     final uri = Uri.tryParse(_dio.options.baseUrl);
-    if (uri == null ||
-        !uri.hasAuthority ||
-        uri.userInfo.isNotEmpty ||
-        !['http', 'https'].contains(uri.scheme) ||
-        (kReleaseMode && uri.scheme != 'https')) {
+    if (!isAllowedApiUrl(uri)) {
       throw const AuthRepositoryException(
         'Backend phải dùng HTTPS trong bản phát hành.',
         code: 'INVALID_ENDPOINT',

@@ -24,6 +24,7 @@ dependencies:
   flutter_secure_storage: ^8.0.0
   dio: ^5.3.2
   file_selector: ^1.0.3
+  share_plus: ^10.1.4
 
 dev_dependencies:
   flutter_test:

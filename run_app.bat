@@ -45,11 +45,12 @@ if "%OPTION%"=="8" goto OPTION_8
 goto MENU
 
 :CHECK_BACKEND
+if not defined LOCAL_IP set "LOCAL_IP=127.0.0.1"
 netstat -ano | findstr ":5000 " | findstr "LISTENING" >nul 2>&1
 if errorlevel 1 (
   echo [Khởi động] Đang kích hoạt Máy chủ Backend Flask và SQL Server...
   if exist "%~dp0..\KLCN_QuanLyPhongKhamDaKhoa\app.py" (
-    start "H2T Backend Flask Server" /min cmd /c "cd /d %~dp0..\KLCN_QuanLyPhongKhamDaKhoa && set PYTHONIOENCODING=utf-8 && python app.py"
+    start "H2T Backend Flask Server" /min cmd /c "cd /d %~dp0..\KLCN_QuanLyPhongKhamDaKhoa && set PYTHONIOENCODING=utf-8&& set MOBILE_ALLOWED_ORIGINS=http://localhost:8080,http://127.0.0.1:8080,http://%LOCAL_IP%:8080&& python app.py"
     timeout /t 2 >nul
   )
 )
@@ -58,10 +59,9 @@ exit /b 0
 :OPTION_1
 call :CHECK_BACKEND
 echo.
-if not exist "%~dp0build\windows\x64\runner\Release\appmobi.exe" (
-  echo Đang biên dịch ứng dụng Native Windows lần đầu tiên...
-  call "%FLUTTER_CMD%" build windows --dart-define=API_BASE_URL=http://127.0.0.1:5000
-)
+echo Đang biên dịch ứng dụng Native Windows...
+call "%FLUTTER_CMD%" build windows --dart-define=API_BASE_URL=http://127.0.0.1:5000
+if errorlevel 1 goto BUILD_FAILED
 echo Đang mở cửa sổ ứng dụng H2T Healthcare kích thước điện thoại 430x880...
 cd /d "%~dp0build\windows\x64\runner\Release"
 start appmobi.exe
@@ -75,12 +75,11 @@ goto MENU
 :OPTION_2
 call :CHECK_BACKEND
 echo.
+echo Đang biên dịch bản Web...
+call "%FLUTTER_CMD%" build web --dart-define=API_BASE_URL=http://127.0.0.1:5000
+if errorlevel 1 goto BUILD_FAILED
 netstat -ano | findstr ":8080 " | findstr "LISTENING" >nul 2>&1
 if errorlevel 1 (
-  if not exist "%~dp0build\web\index.html" (
-    echo Đang biên dịch bản Web lần đầu tiên...
-    call "%FLUTTER_CMD%" build web --dart-define=API_BASE_URL=http://127.0.0.1:5000
-  )
   start "H2T Mobile Web Server" /min cmd /c "cd /d %~dp0build\web && python -m http.server 8080"
   timeout /t 1 >nul
 )
@@ -97,7 +96,6 @@ pause >nul
 goto MENU
 
 :OPTION_3
-call :CHECK_BACKEND
 echo.
 echo Đang lấy địa chỉ IP mạng nội bộ của máy tính...
 set "LOCAL_IP="
@@ -105,6 +103,9 @@ for /f "tokens=4" %%a in ('route print ^| findstr "0.0.0.0.*0.0.0.0" ^| findstr 
   if not defined LOCAL_IP set "LOCAL_IP=%%a"
 )
 if "%LOCAL_IP%"=="" set "LOCAL_IP=127.0.0.1"
+set "FLASK_HOST=0.0.0.0"
+call :CHECK_BACKEND
+set "FLASK_HOST="
 
 echo.
 echo HƯỚNG DẪN KẾT NỐI VÀ TRẢI NGHIỆM TRÊN ĐIỆN THOẠI THẬT:
@@ -114,10 +115,9 @@ echo    http://%LOCAL_IP%:8080
 echo 3. Nhấn tổ hợp Ctrl+C tại đây để dừng máy chủ khi hoàn tất.
 echo.
 
-if not exist "%~dp0build\web\index.html" (
-  echo Đang biên dịch gói Web lần đầu...
-  call "%FLUTTER_CMD%" build web --dart-define=API_BASE_URL=http://%LOCAL_IP%:5000
-)
+echo Đang biên dịch gói Web cho địa chỉ %LOCAL_IP%...
+call "%FLUTTER_CMD%" build web --dart-define=API_BASE_URL=http://%LOCAL_IP%:5000
+if errorlevel 1 goto BUILD_FAILED
 
 python -m http.server 8080 --directory "%~dp0build\web"
 goto MENU
@@ -149,6 +149,7 @@ goto MENU
 echo.
 echo Đang khởi động Máy chủ Backend Flask và kết nối SQL Server...
 cd /d "%~dp0..\KLCN_QuanLyPhongKhamDaKhoa"
+set "MOBILE_ALLOWED_ORIGINS=http://localhost:8080,http://127.0.0.1:8080"
 python app.py
 cd /d "%~dp0"
 goto MENU
@@ -173,3 +174,8 @@ goto MENU
 :OPTION_8
 echo Tạm biệt!
 exit /b 0
+
+:BUILD_FAILED
+echo Biên dịch thất bại. Kiểm tra lỗi Flutter ở phía trên.
+pause
+goto MENU
