@@ -10,7 +10,6 @@ import 'package:appmobi/screens/home_screen.dart';
 import 'package:appmobi/screens/appointment_screen.dart';
 import 'package:appmobi/screens/medical_records_screen.dart';
 import 'package:appmobi/screens/profile_screen.dart';
-import 'package:appmobi/widgets/global_notification_banner.dart';
 import 'personal_profile_screen.dart';
 
 class MainNavigationScreen extends StatefulWidget {
@@ -133,7 +132,71 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
   }
 
   void _showInAppToast(Map<String, dynamic> notif) {
-    GlobalNotificationBanner.show(notif);
+    if (!mounted) return;
+    final title = (notif['tieu_de'] ?? 'Thông báo mới').toString();
+    final body = (notif['noi_dung'] ?? '').toString();
+
+    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        behavior: SnackBarBehavior.floating,
+        margin: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        backgroundColor: const Color(0xFF0D2825),
+        duration: const Duration(seconds: 6),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: const BorderSide(color: Color(0xFF134E4A), width: 1.2),
+        ),
+        content: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(
+                color: const Color(0xFF0F766E).withValues(alpha: 0.4),
+                shape: BoxShape.circle,
+                border: Border.all(color: const Color(0xFF2DD4BF), width: 1.5),
+              ),
+              child: const Center(
+                child: Icon(Icons.notifications_active_rounded,
+                    color: Color(0xFF2DD4BF), size: 18),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 13.5,
+                      color: Colors.white,
+                    ),
+                  ),
+                  if (body.isNotEmpty) ...[
+                    const SizedBox(height: 3),
+                    Text(
+                      body,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: Color(0xFFCCFBF1),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+
     setState(() {
       _refreshKey++; // Làm mới dữ liệu các tab (ví dụ tab lịch khám nhận trạng thái mới)
     });

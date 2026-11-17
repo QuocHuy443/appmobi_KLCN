@@ -116,13 +116,22 @@ class _PaymentQrScreenState extends State<PaymentQrScreen> {
 
   static String _buildVietQrPayload(
       String bankId, String accountNo, String amount, String reference) {
-    final beneficiary = _tlv('00', _bankBin(bankId)) + _tlv('01', accountNo.trim());
+    // Subtag 00: Bank BIN, Subtag 01: Account No
+    final bin = _bankBin(bankId);
+    final acc = accountNo.trim();
+    final beneficiary = _tlv('00', bin) + _tlv('01', acc);
+
+    // Tag 38 (Merchant Account Information - VietQR):
+    // 00: GUID (A000000727), 01: Beneficiary (00: BIN, 01: Acc), 02: Service Code (QRIBFTTA)
     final merchantInfo = _tlv('00', 'A000000727') +
         _tlv('01', beneficiary) +
         _tlv('02', 'QRIBFTTA');
-    final extra = reference.trim().isNotEmpty ? _tlv('62', _tlv('08', reference.trim())) : '';
+
     final amt = int.tryParse(amount) ?? 0;
     final amountField = amt > 0 ? _tlv('54', amt.toString()) : '';
+    final ref = reference.trim();
+    final extra = ref.isNotEmpty ? _tlv('62', _tlv('08', ref)) : '';
+
     final unsigned = _tlv('00', '01') +
         _tlv('01', amt > 0 ? '12' : '11') +
         _tlv('38', merchantInfo) +
@@ -139,8 +148,9 @@ class _PaymentQrScreenState extends State<PaymentQrScreen> {
     return QrImageView(
       data: payload,
       version: QrVersions.auto,
-      size: 220,
+      size: 240,
       backgroundColor: Colors.white,
+      padding: const EdgeInsets.all(12),
       errorCorrectionLevel: QrErrorCorrectLevel.M,
     );
   }
@@ -199,13 +209,23 @@ class _PaymentQrScreenState extends State<PaymentQrScreen> {
   Widget build(BuildContext context) {
     final payment = widget.payment;
     final clock = '${(_remaining ~/ 60).toString().padLeft(2, '0')}:${(_remaining % 60).toString().padLeft(2, '0')}';
-    final qrUrl = (payment['qr_url'] ?? '').toString();
-    final bankId = (payment['bank_id'] ?? '').toString();
-    final accountNo = (payment['bank_account_no'] ?? '').toString();
-    final accountName = (payment['bank_account_name'] ?? '').toString();
+
+    // Cấu hình tài khoản nhận VietQR chính thức (tài khoản chính chủ của bạn)
+    const officialBankId = 'MB';
+    const officialAccountNo = '0774603405';
+    const officialAccountName = 'PHAM QUOC HUY';
+
+    final bankId = (payment['bank_id'] != null && payment['bank_id'].toString().isNotEmpty)
+        ? payment['bank_id'].toString()
+        : officialBankId;
+    final accountNo = officialAccountNo;
+    final accountName = officialAccountName;
     final reference = (payment['reference'] ?? '').toString();
     final invoiceCode = (payment['ma_hoa_don'] ?? '').toString();
     final amountRaw = (payment['amount'] ?? 0).toString();
+
+    final dynamicQrUrl =
+        'https://img.vietqr.io/image/$officialBankId-$officialAccountNo-compact2.png?amount=$amountRaw&addInfo=${Uri.encodeComponent(reference)}&accountName=${Uri.encodeComponent(officialAccountName)}';
 
     return Scaffold(
       appBar: AppBar(title: const Text('Thanh toán VietQR')),
@@ -230,10 +250,10 @@ class _PaymentQrScreenState extends State<PaymentQrScreen> {
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(color: Colors.grey.shade200),
                 ),
-                child: (kIsWeb || qrUrl.isEmpty)
+                child: (kIsWeb || dynamicQrUrl.isEmpty)
                     ? _buildLocalQr(bankId, accountNo, amountRaw, reference)
                     : Image.network(
-                        qrUrl,
+                        dynamicQrUrl,
                         width: 240,
                         height: 240,
                         fit: BoxFit.contain,
