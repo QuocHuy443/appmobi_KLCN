@@ -199,7 +199,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
       backgroundColor: AppColors.slate100,
       appBar: AppBar(
           backgroundColor: AppColors.slate100,
-          title: const Text('H2T Care'),
+          title: const Text('H2T Healthcare'),
           foregroundColor: AppColors.medical700),
       body: SafeArea(
         child: Center(
@@ -343,9 +343,59 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                                     ],
                                     if (_error != null) ...[
                                       const SizedBox(height: 14),
-                                      Text(_error!,
+                                      Container(
+                                        padding: const EdgeInsets.all(12),
+                                        decoration: BoxDecoration(
+                                          color: const Color(0xFFFEF2F2),
+                                          borderRadius: BorderRadius.circular(12),
+                                          border: Border.all(
+                                              color: const Color(0xFFFECACA)),
+                                        ),
+                                        child: Text(
+                                          _error!,
                                           style: const TextStyle(
-                                              color: AppColors.rose500))
+                                            color: AppColors.rose500,
+                                            fontSize: 13,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                    if (_step == 1 || _step == 2) ...[
+                                      const SizedBox(height: 14),
+                                      Container(
+                                        padding: const EdgeInsets.all(12),
+                                        decoration: BoxDecoration(
+                                          color: AppColors.medical50,
+                                          borderRadius: BorderRadius.circular(12),
+                                          border: Border.all(
+                                              color: AppColors.medical100),
+                                        ),
+                                        child: Row(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            const Icon(
+                                              Icons.info_outline_rounded,
+                                              size: 18,
+                                              color: AppColors.medical700,
+                                            ),
+                                            const SizedBox(width: 8),
+                                            Expanded(
+                                              child: Text(
+                                                _step == 1
+                                                    ? 'Nếu tài khoản chưa cập nhật email hoặc chưa gửi được mã OTP, hãy kiểm tra lại đúng email đã đăng ký hoặc liên hệ quầy tiếp đón và tổng đài H2T Healthcare (1900 6868) để được hỗ trợ đặt lại mật khẩu.'
+                                                    : 'Chưa nhận được mã OTP? Hãy kiểm tra hộp thư rác (Spam/Quảng cáo), chờ hết thời gian đếm ngược rồi bấm "Gửi lại mã", hoặc liên hệ CSKH H2T Healthcare (1900 6868).',
+                                                style: const TextStyle(
+                                                  fontSize: 12,
+                                                  color: AppColors.slate700,
+                                                  height: 1.4,
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
                                     ],
                                     const SizedBox(height: 22),
                                     FilledButton(

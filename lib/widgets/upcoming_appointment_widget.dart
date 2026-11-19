@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../core/app_colors.dart';
+import '../core/patient_format.dart';
 import '../screens/appointment_screen.dart';
 
 class UpcomingAppointmentWidget extends StatelessWidget {
@@ -12,22 +13,43 @@ class UpcomingAppointmentWidget extends StatelessWidget {
     this.onChanged,
   });
 
+  String _departmentName(Map<String, dynamic> appt) {
+    final name =
+        (appt['ten_khoa'] ?? appt['khoa'] ?? appt['ten_chuyen_khoa'] ?? '')
+            .toString()
+            .trim();
+    return name.isNotEmpty ? name : 'Khám chuyên khoa';
+  }
+
   void _showDetailModal(BuildContext context, Map<String, dynamic> appt) {
+    final dept =
+        (appt['ten_khoa'] ?? appt['khoa'] ?? appt['ten_chuyen_khoa'] ?? '')
+            .toString()
+            .trim();
+    final doctor = (appt['bac_si'] ?? appt['ten_bac_si'] ?? '').toString().trim();
+    final room = (appt['ten_phong'] ?? appt['phong'] ?? 'Quầy tiếp đón phân bổ')
+        .toString();
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: Text('Chi tiết lịch hẹn ${(appt['ma_lich_hen'] ?? appt['ma_hen']) ?? ''}'),
+        title: Text(
+            'Chi tiết lịch hẹn ${(appt['ma_lich_hen'] ?? appt['ma_hen']) ?? ''}'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _detailLine('Chuyên khoa:', appt['khoa']?.toString() ?? ''),
-            _detailLine('Bác sĩ:', (appt['bac_si'] != null && appt['bac_si'].toString().isNotEmpty) ? appt['bac_si'].toString() : 'Phòng khám điều phối'),
-            _detailLine('Phòng khám:', appt['ten_phong']?.toString() ?? 'Quầy tiếp đón phân bổ'),
-            _detailLine('Ngày hẹn:', appt['ngay_hen']?.toString() ?? ''),
-            _detailLine('Giờ khám:', (appt['gio_hen_short'] ?? appt['gio_hen'])?.toString() ?? ''),
+            _detailLine(
+                'Chuyên khoa:', dept.isNotEmpty ? dept : 'Khám chuyên khoa'),
+            _detailLine(
+                'Bác sĩ:',
+                doctor.isNotEmpty ? doctor : 'Phòng khám điều phối'),
+            _detailLine('Phòng khám:', room),
+            _detailLine('Ngày hẹn:', patientDate(appt['ngay_hen'])),
+            _detailLine('Giờ khám:',
+                (appt['gio_hen_short'] ?? appt['gio_hen'])?.toString() ?? ''),
             _detailLine('Trạng thái:', appt['trang_thai']?.toString() ?? ''),
-            _detailLine('Lý do khám:', (appt['ly_do_kham'] ?? appt['ly_do'])?.toString() ?? ''),
+            _detailLine('Lý do khám:',
+                (appt['ly_do_kham'] ?? appt['ly_do'])?.toString() ?? ''),
           ],
         ),
         actions: [
@@ -109,15 +131,18 @@ class UpcomingAppointmentWidget extends StatelessWidget {
     }
 
     final appt = appointment!;
-    final rawDate = (appt['ngay_hen'] ?? '').toString();
+    final rawDate =
+        (appt['ngay_hen'] ?? '').toString().split(' ').first.split('T').first;
     final parts = rawDate.split('-');
-    final monthStr = parts.length >= 2 ? 'Th ${int.tryParse(parts[1]) ?? parts[1]}' : 'Lịch';
+    final monthStr =
+        parts.length >= 2 ? 'Th ${int.tryParse(parts[1]) ?? parts[1]}' : 'Lịch';
     final dayStr = parts.length >= 3 ? parts[2] : '--';
-    final deptName = (appt['khoa'] ?? 'Khám chuyên khoa').toString();
-    final docName = (appt['bac_si'] != null && appt['bac_si'].toString().isNotEmpty)
-        ? appt['bac_si'].toString()
-        : 'Bác sĩ chuyên khoa';
-    final timeStr = ((appt['gio_hen_short'] ?? appt['gio_hen']) ?? '').toString();
+    final deptName = _departmentName(appt);
+    final rawDoc = (appt['bac_si'] ?? appt['ten_bac_si'] ?? '').toString().trim();
+    final docName = rawDoc.isNotEmpty ? rawDoc : 'Bác sĩ chuyên khoa';
+    final dateStr = patientDate(appt['ngay_hen']);
+    final timeStr =
+        ((appt['gio_hen_short'] ?? appt['gio_hen']) ?? '').toString();
     final statusStr = (appt['trang_thai'] ?? 'Chờ xác nhận').toString();
 
     return Container(
@@ -169,7 +194,7 @@ class UpcomingAppointmentWidget extends StatelessWidget {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      '$docName • $timeStr',
+                      '$docName • $dateStr${timeStr.isNotEmpty ? ' • $timeStr' : ''}',
                       style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
                     ),
                     const SizedBox(height: 4),

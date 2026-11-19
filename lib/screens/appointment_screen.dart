@@ -39,6 +39,19 @@ class _AppointmentScreenState extends State<AppointmentScreen> {
   bool _acting = false;
 
   @override
+  void initState() {
+    super.initState();
+    PatientApiService.dataRevision.addListener(_onDataRevisionChanged);
+  }
+
+  void _onDataRevisionChanged() {
+    final token = _token;
+    if (mounted && token != null && token.isNotEmpty && !_loading) {
+      _load(token);
+    }
+  }
+
+  @override
   void didChangeDependencies() {
     super.didChangeDependencies();
     final token = context.watch<AuthViewModel>().currentUser?.token;
@@ -60,6 +73,7 @@ class _AppointmentScreenState extends State<AppointmentScreen> {
 
   @override
   void dispose() {
+    PatientApiService.dataRevision.removeListener(_onDataRevisionChanged);
     _searchController.dispose();
     super.dispose();
   }
@@ -207,26 +221,85 @@ class _AppointmentScreenState extends State<AppointmentScreen> {
         (a['ten_phong'] ?? a['phong'] ?? 'Quầy tiếp đón phân bổ').toString();
     final reason = (a['ly_do_kham'] ?? a['ly_do'] ?? '').toString();
     final cancelReason = (a['ly_do_huy'] ?? '').toString();
+    final sttVal = a['stt_ngay'];
+    final sttDisplay = (sttVal != null && '$sttVal'.trim().isNotEmpty)
+        ? 'STT #${'$sttVal'.padLeft(3, '0')}'
+        : 'Chưa cấp STT';
+    final isUnavailable = a['is_unavailable'] == true;
+    final isCalled = a['da_goi_kham'] == true || a['da_goi_kham'] == 1;
+    final statusCode = _normalizeStatusCode(a);
+    final callStatusText = isUnavailable
+        ? 'Lịch hẹn đã quá thời gian khám và không còn khả dụng'
+        : (isCalled
+            ? 'Đang gọi vào phòng khám (${a['thoi_gian_goi'] ?? 'vừa xong'})'
+            : (statusCode == 'completed'
+                ? 'Đã khám xong'
+                : (statusCode == 'cancelled'
+                    ? 'Lịch hẹn đã hủy'
+                    : 'Đang trong hàng đợi gọi số theo thứ tự')));
 
     showDialog<void>(
       context: context,
       builder: (ctx) => AlertDialog(
         title: Text('Phiếu hẹn #$code'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _detailLine('Trạng thái:', '${a['trang_thai'] ?? ''}'),
-            _detailLine('Chuyên khoa:', dept),
-            _detailLine('Bác sĩ:', doctor),
-            _detailLine('Phòng khám:', room),
-            _detailLine('Ngày khám:', patientDate(a['ngay_hen'])),
-            _detailLine(
-                'Giờ hẹn:', '${a['gio_hen_short'] ?? a['gio_hen'] ?? ''}'),
-            if (reason.isNotEmpty) _detailLine('Lý do khám:', reason),
-            if (cancelReason.isNotEmpty)
-              _detailLine('Lý do hủy:', cancelReason),
-          ],
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: double.infinity,
+                margin: const EdgeInsets.only(bottom: 12),
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: AppColors.medical50,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: AppColors.medical200),
+                ),
+                child: Column(
+                  children: [
+                    const Text(
+                      'SỐ THỨ TỰ KHÁM TRONG NGÀY',
+                      style: TextStyle(
+                        fontSize: 10.5,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.medical700,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      sttDisplay,
+                      style: const TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.w900,
+                        color: AppColors.medical700,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      callStatusText,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.slate700,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              _detailLine('Trạng thái:', '${a['trang_thai'] ?? ''}'),
+              _detailLine('Chuyên khoa:', dept),
+              _detailLine('Bác sĩ:', doctor),
+              _detailLine('Phòng khám:', room),
+              _detailLine('Ngày khám:', patientDate(a['ngay_hen'])),
+              _detailLine(
+                  'Giờ hẹn:', '${a['gio_hen_short'] ?? a['gio_hen'] ?? ''}'),
+              if (reason.isNotEmpty) _detailLine('Lý do khám:', reason),
+              if (cancelReason.isNotEmpty)
+                _detailLine('Lý do hủy:', cancelReason),
+            ],
+          ),
         ),
         actions: [
           TextButton(
@@ -277,7 +350,12 @@ class _AppointmentScreenState extends State<AppointmentScreen> {
     final time = rawTime.length < 5
         ? null
         : DateTime.tryParse('$rawDate ${rawTime.substring(0, 5)}');
-    final future = time != null && time.isAfter(DateTime.now());
+    final isUnavailable = a['is_unavailable'] == true;
+    final future = time != null && time.isAfter(DateTime.now()) && !isUnavailable;
+    final sttVal = a['stt_ngay'];
+    final sttLabel = (sttVal != null && '$sttVal'.trim().isNotEmpty)
+        ? 'STT #${'$sttVal'.padLeft(3, '0')}'
+        : null;
     final dateParts = rawDate.split('-');
     final yearStr = dateParts.isNotEmpty ? dateParts[0] : '';
     final monthStr = dateParts.length >= 2 ? 'Th${dateParts[1]}' : 'Th--';
@@ -389,6 +467,24 @@ class _AppointmentScreenState extends State<AppointmentScreen> {
                               color: AppColors.slate600,
                             ),
                           ),
+                          if (sttLabel != null)
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 7, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: Colors.teal.shade50,
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(color: Colors.teal.shade200),
+                              ),
+                              child: Text(
+                                sttLabel,
+                                style: const TextStyle(
+                                  fontSize: 10.5,
+                                  fontWeight: FontWeight.w800,
+                                  color: AppColors.medical700,
+                                ),
+                              ),
+                            ),
                           Container(
                             padding: const EdgeInsets.symmetric(
                                 horizontal: 8, vertical: 2),
@@ -405,6 +501,23 @@ class _AppointmentScreenState extends State<AppointmentScreen> {
                               ),
                             ),
                           ),
+                          if (isUnavailable)
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 7, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: Colors.red.shade50,
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: Text(
+                                'Không khả dụng',
+                                style: TextStyle(
+                                  fontSize: 10.5,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.red.shade700,
+                                ),
+                              ),
+                            ),
                           if (isDoctorScheduled)
                             Container(
                               padding: const EdgeInsets.symmetric(
@@ -560,163 +673,168 @@ class _AppointmentScreenState extends State<AppointmentScreen> {
     return DefaultTabController(
       length: 2,
       initialIndex: widget.initialTab,
-      child: Scaffold(
-        backgroundColor: AppColors.slate50,
-        appBar: AppBar(
-          title: const Text('Đặt lịch khám bệnh'),
-          actions: [
-            if (_token != null)
-              IconButton(
-                tooltip: 'Làm mới lịch hẹn',
-                onPressed: _loading ? null : () => _load(_token!),
-                icon: const Icon(Icons.refresh, color: AppColors.medical600),
-              ),
-          ],
-          bottom: TabBar(
-            labelColor: AppColors.medical600,
-            unselectedLabelColor: AppColors.slate500,
-            indicatorColor: AppColors.medical600,
-            tabs: [
-              const Tab(text: 'Đặt lịch mới'),
-              Tab(text: 'Lịch hẹn của tôi (${_appointments.length})'),
+      child: Builder(
+        builder: (tabContext) => Scaffold(
+          backgroundColor: AppColors.slate50,
+          appBar: AppBar(
+            title: const Text('Đặt lịch khám bệnh'),
+            actions: [
+              if (_token != null)
+                IconButton(
+                  tooltip: 'Làm mới lịch hẹn',
+                  onPressed: _loading ? null : () => _load(_token!),
+                  icon: const Icon(Icons.refresh, color: AppColors.medical600),
+                ),
             ],
-          ),
-        ),
-        body: TabBarView(
-          children: [
-            AppointmentBookingForm(
-              initialDepartmentId: widget.initialDepartmentId,
-              initialDoctorId: widget.initialDoctorId,
-              onSaved: () {
-                if (_token != null) _load(_token!);
-              },
+            bottom: TabBar(
+              labelColor: AppColors.medical600,
+              unselectedLabelColor: AppColors.slate500,
+              indicatorColor: AppColors.medical600,
+              tabs: [
+                const Tab(text: 'Đặt lịch mới'),
+                Tab(text: 'Lịch hẹn của tôi (${_appointments.length})'),
+              ],
             ),
-            _token == null
-                ? Center(
-                    child: Padding(
-                      padding: const EdgeInsets.all(24),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
+          ),
+          body: TabBarView(
+            children: [
+              AppointmentBookingForm(
+                initialDepartmentId: widget.initialDepartmentId,
+                initialDoctorId: widget.initialDoctorId,
+                onSaved: () {
+                  if (_token != null) _load(_token!);
+                  if (tabContext.mounted) {
+                    DefaultTabController.of(tabContext).animateTo(1);
+                  }
+                },
+              ),
+              _token == null
+                  ? Center(
+                      child: Padding(
+                        padding: const EdgeInsets.all(24),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const FaIcon(
+                              FontAwesomeIcons.calendarPlus,
+                              size: 46,
+                              color: AppColors.medical600,
+                            ),
+                            const SizedBox(height: 14),
+                            const Text(
+                              'Vui lòng đăng nhập để xem và quản lý lịch hẹn của bạn.',
+                              textAlign: TextAlign.center,
+                            ),
+                            const SizedBox(height: 14),
+                            FilledButton(
+                              onPressed: () => Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => const AuthScreen(),
+                                ),
+                              ),
+                              child: const Text('Đăng nhập'),
+                            ),
+                          ],
+                        ),
+                      ),
+                    )
+                  : RefreshIndicator(
+                      onRefresh: () => _load(_token!),
+                      child: ListView(
+                        physics: const AlwaysScrollableScrollPhysics(),
+                        padding: const EdgeInsets.all(16),
                         children: [
-                          const FaIcon(
-                            FontAwesomeIcons.calendarPlus,
-                            size: 46,
-                            color: AppColors.medical600,
-                          ),
-                          const SizedBox(height: 14),
-                          const Text(
-                            'Vui lòng đăng nhập để xem và quản lý lịch hẹn của bạn.',
-                            textAlign: TextAlign.center,
-                          ),
-                          const SizedBox(height: 14),
-                          FilledButton(
-                            onPressed: () => Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => const AuthScreen(),
+                          // Thanh tìm kiếm và lọc trạng thái giống bản Web
+                          TextField(
+                            controller: _searchController,
+                            onChanged: (v) =>
+                                setState(() => _searchQuery = v.trim()),
+                            decoration: InputDecoration(
+                              hintText:
+                                  'Tìm theo mã hẹn, bác sĩ, chuyên khoa...',
+                              prefixIcon: const Icon(Icons.search, size: 20),
+                              suffixIcon: _searchQuery.isEmpty
+                                  ? null
+                                  : IconButton(
+                                      icon: const Icon(Icons.clear, size: 18),
+                                      onPressed: () {
+                                        _searchController.clear();
+                                        setState(() => _searchQuery = '');
+                                      },
+                                    ),
+                              filled: true,
+                              fillColor: Colors.white,
+                              contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 14, vertical: 10),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(14),
+                                borderSide:
+                                    const BorderSide(color: AppColors.slate200),
+                              ),
+                              enabledBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(14),
+                                borderSide:
+                                    const BorderSide(color: AppColors.slate200),
                               ),
                             ),
-                            child: const Text('Đăng nhập'),
                           ),
+                          const SizedBox(height: 10),
+                          SingleChildScrollView(
+                            scrollDirection: Axis.horizontal,
+                            child: Row(
+                              children: [
+                                for (final tab in [
+                                  ('all', 'Tất cả (${_appointments.length})'),
+                                  ('waiting', 'Chờ duyệt ($waitingCount)'),
+                                  ('confirmed', 'Đã xác nhận ($confirmedCount)'),
+                                  ('completed', 'Đã khám ($completedCount)'),
+                                  ('cancelled', 'Đã hủy ($cancelledCount)'),
+                                ])
+                                  Padding(
+                                    padding: const EdgeInsets.only(right: 8),
+                                    child: ChoiceChip(
+                                      label: Text(
+                                        tab.$2,
+                                        style: const TextStyle(fontSize: 12),
+                                      ),
+                                      selected: _statusFilter == tab.$1,
+                                      selectedColor: AppColors.medical100,
+                                      onSelected: (_) => setState(
+                                          () => _statusFilter = tab.$1),
+                                    ),
+                                  ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          if (_loading) const LinearProgressIndicator(),
+                          if (_error != null)
+                            RequestError(
+                              message: _error!,
+                              onRetry: () => _load(_token!),
+                            ),
+                          if (!_loading && _error == null && filtered.isEmpty)
+                            Padding(
+                              padding: const EdgeInsets.all(24),
+                              child: Center(
+                                child: Text(
+                                  _appointments.isEmpty
+                                      ? 'Bạn chưa có lịch hẹn nào.'
+                                      : 'Không tìm thấy lịch hẹn phù hợp với bộ lọc.',
+                                  style: const TextStyle(
+                                    color: AppColors.slate500,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ...filtered.map(_card),
                         ],
                       ),
                     ),
-                  )
-                : RefreshIndicator(
-                    onRefresh: () => _load(_token!),
-                    child: ListView(
-                      physics: const AlwaysScrollableScrollPhysics(),
-                      padding: const EdgeInsets.all(16),
-                      children: [
-                        // Thanh tìm kiếm và lọc trạng thái giống bản Web
-                        TextField(
-                          controller: _searchController,
-                          onChanged: (v) =>
-                              setState(() => _searchQuery = v.trim()),
-                          decoration: InputDecoration(
-                            hintText:
-                                'Tìm theo mã hẹn, bác sĩ, chuyên khoa...',
-                            prefixIcon: const Icon(Icons.search, size: 20),
-                            suffixIcon: _searchQuery.isEmpty
-                                ? null
-                                : IconButton(
-                                    icon: const Icon(Icons.clear, size: 18),
-                                    onPressed: () {
-                                      _searchController.clear();
-                                      setState(() => _searchQuery = '');
-                                    },
-                                  ),
-                            filled: true,
-                            fillColor: Colors.white,
-                            contentPadding: const EdgeInsets.symmetric(
-                                horizontal: 14, vertical: 10),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(14),
-                              borderSide:
-                                  const BorderSide(color: AppColors.slate200),
-                            ),
-                            enabledBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(14),
-                              borderSide:
-                                  const BorderSide(color: AppColors.slate200),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 10),
-                        SingleChildScrollView(
-                          scrollDirection: Axis.horizontal,
-                          child: Row(
-                            children: [
-                              for (final tab in [
-                                ('all', 'Tất cả (${_appointments.length})'),
-                                ('waiting', 'Chờ duyệt ($waitingCount)'),
-                                ('confirmed', 'Đã xác nhận ($confirmedCount)'),
-                                ('completed', 'Đã khám ($completedCount)'),
-                                ('cancelled', 'Đã hủy ($cancelledCount)'),
-                              ])
-                                Padding(
-                                  padding: const EdgeInsets.only(right: 8),
-                                  child: ChoiceChip(
-                                    label: Text(
-                                      tab.$2,
-                                      style: const TextStyle(fontSize: 12),
-                                    ),
-                                    selected: _statusFilter == tab.$1,
-                                    selectedColor: AppColors.medical100,
-                                    onSelected: (_) =>
-                                        setState(() => _statusFilter = tab.$1),
-                                  ),
-                                ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        if (_loading) const LinearProgressIndicator(),
-                        if (_error != null)
-                          RequestError(
-                            message: _error!,
-                            onRetry: () => _load(_token!),
-                          ),
-                        if (!_loading && _error == null && filtered.isEmpty)
-                          Padding(
-                            padding: const EdgeInsets.all(24),
-                            child: Center(
-                              child: Text(
-                                _appointments.isEmpty
-                                    ? 'Bạn chưa có lịch hẹn nào.'
-                                    : 'Không tìm thấy lịch hẹn phù hợp với bộ lọc.',
-                                style: const TextStyle(
-                                  color: AppColors.slate500,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ...filtered.map(_card),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
+            ],
+          ),
+        ),
       ),
     );
   }

@@ -28,6 +28,15 @@ class _AuthScreenState extends State<AuthScreen> {
   String _gender = 'Nam';
   bool _obscurePassword = true;
 
+  static final _forbiddenChars = RegExp(r'[<>{}\[\]$%^*=~`|\\;]|--');
+  static final _vietnameseNamePattern = RegExp(
+    r'^[a-zA-Zàáảãạăằắẳẵặâầấẩẫậèéẻẽẹêềếểễệìíỉĩịòóỏõọôồốổỗộơờớởỡợùúủũụưừứửữựỳýỷỹỵđ'
+    r'ÀÁẢÃẠĂẰẮẲẴẶÂẦẤẨẪẬÈÉẺẼẸÊỀẾỂỄỆÌÍỈĨỊÒÓỎÕỌÔỒỐỔỖỘƠỜỚỞỠỢÙÚỦŨỤƯỪỨỬỮỰỲÝỶỸỴĐ\s]+$',
+  );
+  static final _vnPhonePattern = RegExp(r'^(03|05|07|08|09)\d{8}$');
+  static final _emailPattern =
+      RegExp(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$');
+
   bool get _isRegistering => _mode == AuthMode.register;
 
   @override
@@ -168,7 +177,7 @@ class _AuthScreenState extends State<AuthScreen> {
                       Text(
                         _isRegistering
                             ? 'Quản lý lịch khám và hồ sơ sức khỏe của bạn.'
-                            : 'Đăng nhập để tiếp tục chăm sóc sức khỏe cùng H2T.',
+                            : 'Đăng nhập để tiếp tục chăm sóc sức khỏe cùng H2T Healthcare.',
                         textAlign: TextAlign.center,
                         style: const TextStyle(
                           color: AppColors.slate600,
@@ -206,10 +215,22 @@ class _AuthScreenState extends State<AuthScreen> {
                                 hint: 'Nhập họ và tên (VD: Nguyễn Văn An)',
                                 icon: Icons.person_outline_rounded,
                                 textInputAction: TextInputAction.next,
-                                validator: (value) =>
-                                    value == null || value.trim().isEmpty
-                                        ? 'Vui lòng nhập họ và tên'
-                                        : null,
+                                validator: (value) {
+                                  final name = (value ?? '')
+                                      .trim()
+                                      .replaceAll(RegExp(r'\s+'), ' ');
+                                  if (name.isEmpty) {
+                                    return 'Vui lòng nhập họ và tên';
+                                  }
+                                  if (name.length < 2 || name.length > 100) {
+                                    return 'Họ và tên phải có độ dài từ 2 đến 100 ký tự!';
+                                  }
+                                  if (_forbiddenChars.hasMatch(name) ||
+                                      !_vietnameseNamePattern.hasMatch(name)) {
+                                    return 'Họ và tên chỉ được chứa chữ cái tiếng Việt và khoảng trắng, không chứa số hay ký tự lạ!';
+                                  }
+                                  return null;
+                                },
                               ),
                               const SizedBox(height: 18),
                               _buildField(
@@ -217,10 +238,21 @@ class _AuthScreenState extends State<AuthScreen> {
                                 label: 'Ngày sinh',
                                 hint: 'Chọn ngày tháng năm sinh',
                                 icon: Icons.calendar_today_rounded,
-                                validator: (value) =>
-                                    value == null || value.isEmpty
-                                        ? 'Vui lòng chọn ngày sinh'
-                                        : null,
+                                validator: (value) {
+                                  final raw = (value ?? '').trim();
+                                  if (raw.isEmpty) {
+                                    return 'Vui lòng chọn ngày sinh';
+                                  }
+                                  final date = DateTime.tryParse(raw);
+                                  if (date == null ||
+                                      date.toIso8601String().substring(0, 10) !=
+                                          raw ||
+                                      date.year < 1900 ||
+                                      date.isAfter(DateTime.now())) {
+                                    return 'Ngày sinh phải là YYYY-MM-DD hợp lệ, không ở tương lai.';
+                                  }
+                                  return null;
+                                },
                                 onTap: _selectBirthDate,
                               ),
                               const SizedBox(height: 18),
@@ -292,12 +324,19 @@ class _AuthScreenState extends State<AuthScreen> {
                               icon: Icons.phone_android_rounded,
                               keyboardType: TextInputType.phone,
                               textInputAction: TextInputAction.next,
-                              validator: (value) => value == null ||
-                                      value.trim().isEmpty
-                                  ? _isRegistering
+                              validator: (value) {
+                                final text = (value ?? '').trim();
+                                if (text.isEmpty) {
+                                  return _isRegistering
                                       ? 'Vui lòng nhập số điện thoại'
-                                      : 'Vui lòng nhập tên đăng nhập hoặc số điện thoại'
-                                  : null,
+                                      : 'Vui lòng nhập tên đăng nhập hoặc số điện thoại';
+                                }
+                                if (_isRegistering &&
+                                    !_vnPhonePattern.hasMatch(text)) {
+                                  return 'Số điện thoại không đúng định dạng (10 số, bắt đầu 03, 05, 07, 08, 09)!';
+                                }
+                                return null;
+                              },
                             ),
                             const SizedBox(height: 18),
                             if (_isRegistering) ...[
@@ -307,7 +346,17 @@ class _AuthScreenState extends State<AuthScreen> {
                                 hint: 'example@email.com',
                                 icon: Icons.email_outlined,
                                 keyboardType: TextInputType.emailAddress,
-                                validator: (_) => null,
+                                validator: (value) {
+                                  final email = (value ?? '').trim();
+                                  if (email.isEmpty) return null;
+                                  if (email.length > 100) {
+                                    return 'Địa chỉ email không vượt quá 100 ký tự!';
+                                  }
+                                  if (!_emailPattern.hasMatch(email)) {
+                                    return 'Địa chỉ email không đúng định dạng (ví dụ: h2t@healthcare.vn)!';
+                                  }
+                                  return null;
+                                },
                               ),
                               const SizedBox(height: 18),
                             ],
@@ -331,10 +380,15 @@ class _AuthScreenState extends State<AuthScreen> {
                                 onPressed: () => setState(
                                     () => _obscurePassword = !_obscurePassword),
                               ),
-                              validator: (value) =>
-                                  value == null || value.length < 6
-                                      ? 'Mật khẩu cần ít nhất 6 ký tự'
-                                      : null,
+                              validator: (value) {
+                                if (value == null || value.length < 6) {
+                                  return 'Mật khẩu cần ít nhất 6 ký tự';
+                                }
+                                if (_isRegistering && value.trim() != value) {
+                                  return 'Mật khẩu không được có khoảng trắng ở đầu hoặc cuối';
+                                }
+                                return null;
+                              },
                               onFieldSubmitted: (_) => _submit(),
                             ),
                             if (!_isRegistering) ...[
@@ -762,21 +816,36 @@ class _AuthScreenState extends State<AuthScreen> {
               onPressed: busy
                   ? null
                   : () async {
+                      final identifier = idController.text.trim();
+                      final currentPass = oldPassController.text;
+                      final newPass = newPassController.text;
+                      if (identifier.isEmpty || currentPass.isEmpty) {
+                        setDialogState(() {
+                          errorMsg = 'Vui lòng nhập đầy đủ tên đăng nhập hoặc SĐT và mật khẩu hiện tại.';
+                        });
+                        return;
+                      }
+                      if (newPass.length < 6 || newPass.trim() != newPass) {
+                        setDialogState(() {
+                          errorMsg = 'Mật khẩu mới cần tối thiểu 6 ký tự và không có khoảng trắng đầu/cuối.';
+                        });
+                        return;
+                      }
                       setDialogState(() {
                         busy = true;
                         errorMsg = null;
                       });
                       try {
                         final res = await api.changePassword(
-                          identifier: idController.text,
-                          currentPassword: oldPassController.text,
-                          newPassword: newPassController.text,
+                          identifier: identifier,
+                          currentPassword: currentPass,
+                          newPassword: newPass,
                         );
                         if (!ctx.mounted) return;
                         Navigator.pop(ctx);
                         if (!mounted) return;
-                        _identifierController.text = idController.text.trim();
-                        _passwordController.text = newPassController.text;
+                        _identifierController.text = identifier;
+                        _passwordController.text = newPass;
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
                             backgroundColor: AppColors.medical600,

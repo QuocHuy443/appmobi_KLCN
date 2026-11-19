@@ -13,16 +13,17 @@ import 'articles_screen.dart';
 import 'pricing_screen.dart';
 
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key, this.refreshVersion = 0});
+  const HomeScreen({super.key, this.refreshVersion = 0, this.api});
 
   final int refreshVersion;
+  final PatientApiService? api;
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  final PatientApiService _api = PatientApiService();
+  late final PatientApiService _api = widget.api ?? PatientApiService();
   String? _loadedToken;
   Map<String, dynamic>? _dashboardData;
   Map<String, dynamic>? _publicHomeData;
@@ -272,7 +273,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             SizedBox(width: 5),
                             Flexible(
                               child: Text(
-                                'CỔNG THÔNG TIN PHÒNG KHÁM H2T',
+                                'CỔNG THÔNG TIN H2T HEALTHCARE',
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                                 style: TextStyle(
@@ -906,6 +907,8 @@ class _HomeScreenState extends State<HomeScreen> {
                           backgroundImage: avatarUrl != null
                               ? NetworkImage(avatarUrl)
                               : null,
+                          onBackgroundImageError:
+                              avatarUrl != null ? (_, __) {} : null,
                           child: avatarUrl == null
                               ? const Icon(Icons.person,
                                   color: AppColors.medical700)
@@ -1088,8 +1091,17 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 ),
                 const SizedBox(height: 8),
-                ...feedbacks.take(3).map((fb) {
-                  final stars = (fb['diem_danh_gia'] as num?)?.toInt() ?? 5;
+                ...feedbacks.take(5).map((fb) {
+                  final rawStars = fb['diem_danh_gia'];
+                  final parsedStars = rawStars is num
+                      ? rawStars.toInt()
+                      : (int.tryParse(rawStars?.toString() ?? '') ?? 5);
+                  final stars = parsedStars.clamp(1, 5);
+                  final rawAuthor = (fb['ten_benh_nhan'] ?? '').toString().trim();
+                  final author = rawAuthor.isNotEmpty ? rawAuthor : 'Bệnh nhân';
+                  final topic = (fb['chu_de'] ?? '').toString().trim();
+                  final content = (fb['noi_dung'] ?? '').toString().trim();
+                  final createdAt = (fb['ngay_tao'] ?? '').toString().trim();
                   return Container(
                     margin: const EdgeInsets.only(bottom: 8),
                     padding: const EdgeInsets.all(12),
@@ -1106,7 +1118,9 @@ class _HomeScreenState extends State<HomeScreen> {
                           children: [
                             Expanded(
                               child: Text(
-                                '${fb['ten_benh_nhan'] ?? 'Bệnh nhân'}',
+                                author,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
                                 style: const TextStyle(
                                   fontSize: 13,
                                   fontWeight: FontWeight.bold,
@@ -1114,10 +1128,11 @@ class _HomeScreenState extends State<HomeScreen> {
                                 ),
                               ),
                             ),
+                            const SizedBox(width: 8),
                             Row(
                               mainAxisSize: MainAxisSize.min,
                               children: List.generate(
-                                stars.clamp(1, 5),
+                                stars,
                                 (_) => const Icon(
                                   Icons.star,
                                   size: 14,
@@ -1127,14 +1142,33 @@ class _HomeScreenState extends State<HomeScreen> {
                             ),
                           ],
                         ),
-                        const SizedBox(height: 4),
-                        Text(
-                          '${fb['noi_dung'] ?? ''}',
-                          style: const TextStyle(
-                            fontSize: 12,
-                            color: AppColors.slate600,
+                        if (topic.isNotEmpty || createdAt.isNotEmpty) ...[
+                          const SizedBox(height: 3),
+                          Text(
+                            [
+                              if (topic.isNotEmpty) topic,
+                              if (createdAt.isNotEmpty) patientDate(createdAt),
+                            ].join(' • '),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontSize: 11,
+                              color: AppColors.slate400,
+                            ),
                           ),
-                        ),
+                        ],
+                        if (content.isNotEmpty) ...[
+                          const SizedBox(height: 4),
+                          Text(
+                            content,
+                            maxLines: 4,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: AppColors.slate600,
+                            ),
+                          ),
+                        ],
                       ],
                     ),
                   );
@@ -1171,7 +1205,7 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
               const SizedBox(height: 4),
               Text(
-                'Phòng khám Đa khoa H2T quy tụ đầy đủ các chuyên khoa mũi nhọn (${departments.length} chuyên khoa), sẵn sàng đáp ứng mọi nhu cầu khám chữa bệnh của người dân.',
+                'Phòng khám Đa khoa H2T Healthcare quy tụ đầy đủ các chuyên khoa mũi nhọn (${departments.length} chuyên khoa), sẵn sàng đáp ứng mọi nhu cầu khám chữa bệnh của người dân.',
                 style: const TextStyle(
                   fontSize: 12.5,
                   color: AppColors.slate600,
@@ -1412,6 +1446,8 @@ class _HomeScreenState extends State<HomeScreen> {
                         backgroundColor: AppColors.medical100,
                         backgroundImage:
                             avatarUrl != null ? NetworkImage(avatarUrl) : null,
+                        onBackgroundImageError:
+                            avatarUrl != null ? (_, __) {} : null,
                         child: avatarUrl == null
                             ? const Icon(Icons.person,
                                 color: AppColors.medical700, size: 28)
@@ -2171,12 +2207,14 @@ class _HomeScreenState extends State<HomeScreen> {
                   Icon(Icons.phone_in_talk_outlined,
                       size: 18, color: Colors.redAccent),
                   SizedBox(width: 8),
-                  Text(
-                    'Hotline tư vấn và cấp cứu: 1900 6868',
-                    style: TextStyle(
-                      fontSize: 12.5,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.slate800,
+                  Expanded(
+                    child: Text(
+                      'Hotline tư vấn và cấp cứu: 1900 6868',
+                      style: TextStyle(
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.slate800,
+                      ),
                     ),
                   ),
                 ],
@@ -2187,9 +2225,11 @@ class _HomeScreenState extends State<HomeScreen> {
                   Icon(Icons.access_time_outlined,
                       size: 18, color: AppColors.slate600),
                   SizedBox(width: 8),
-                  Text(
-                    'Giờ làm việc: 07:00 - 20:30 (Thứ 2 đến Chủ nhật)',
-                    style: TextStyle(fontSize: 12.5, color: AppColors.slate700),
+                  Expanded(
+                    child: Text(
+                      'Giờ làm việc: 07:00 - 20:30 (Thứ 2 đến Chủ nhật)',
+                      style: TextStyle(fontSize: 12.5, color: AppColors.slate700),
+                    ),
                   ),
                 ],
               ),
@@ -2198,6 +2238,14 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
       ],
     );
+  }
+
+  List<Map<String, dynamic>> _mapList(dynamic raw) {
+    if (raw is! List) return const [];
+    return raw
+        .whereType<Map>()
+        .map((e) => Map<String, dynamic>.from(e))
+        .toList();
   }
 
   @override
@@ -2212,35 +2260,16 @@ class _HomeScreenState extends State<HomeScreen> {
     final error = _publicError ?? _error ??
         (user == null ? context.watch<AuthViewModel>().errorMessage : null);
 
-    final banners = List<Map<String, dynamic>>.from(
-      (_publicHomeData?['banners'] as List? ?? [])
-          .map((e) => Map<String, dynamic>.from(e as Map)),
-    );
-    final departments = List<Map<String, dynamic>>.from(
-      (_publicHomeData?['departments'] as List? ?? [])
-          .map((e) => Map<String, dynamic>.from(e as Map)),
-    );
-    final doctors = List<Map<String, dynamic>>.from(
-      (_publicHomeData?['doctors'] as List? ?? [])
-          .map((e) => Map<String, dynamic>.from(e as Map)),
-    );
-    final pricingPreview = List<Map<String, dynamic>>.from(
-      (_publicHomeData?['pricing_preview'] as List? ?? [])
-          .map((e) => Map<String, dynamic>.from(e as Map)),
-    );
-    final articles = List<Map<String, dynamic>>.from(
-      (_publicHomeData?['articles'] as List? ?? [])
-          .map((e) => Map<String, dynamic>.from(e as Map)),
-    );
-    final handbooks = List<Map<String, dynamic>>.from(
-      (_publicHomeData?['handbooks'] as List? ?? [])
-          .map((e) => Map<String, dynamic>.from(e as Map)),
-    );
-    final feedbacks = List<Map<String, dynamic>>.from(
-      (_publicHomeData?['feedbacks'] as List? ?? [])
-          .map((e) => Map<String, dynamic>.from(e as Map)),
-    );
-    final categories = (_publicHomeData?['categories'] as List? ?? []);
+    final banners = _mapList(_publicHomeData?['banners']);
+    final departments = _mapList(_publicHomeData?['departments']);
+    final doctors = _mapList(_publicHomeData?['doctors']);
+    final pricingPreview = _mapList(_publicHomeData?['pricing_preview']);
+    final articles = _mapList(_publicHomeData?['articles']);
+    final handbooks = _mapList(_publicHomeData?['handbooks']);
+    final feedbacks = _mapList(_publicHomeData?['feedbacks']);
+    final categories = (_publicHomeData?['categories'] is List)
+        ? (_publicHomeData!['categories'] as List)
+        : const [];
 
     return Scaffold(
       backgroundColor: AppColors.slate50,

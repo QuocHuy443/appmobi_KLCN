@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:appmobi/services/auth_service.dart';
 import 'package:appmobi/services/patient_api_service.dart';
 import 'auth_repository_contract_test.dart' show ContractAdapter;
 
@@ -167,5 +168,92 @@ void main() {
     expect(
         adapter.calls.last.path, '/api/v1/mobile/auth/forgot-password/reset');
     expect(adapter.calls.last.receiveTimeout, const Duration(seconds: 45));
+  });
+
+  test(
+      'AuthRepositoryImpl.isAllowedApiUrl allows local and LAN HTTP URLs and blocks external HTTP in release mode',
+      () {
+    for (final url in [
+      'http://127.0.0.1:5000',
+      'http://localhost:5000',
+      'http://10.0.2.2:5000',
+      'http://192.168.1.50:5000',
+      'https://example.com',
+    ]) {
+      expect(
+        AuthRepositoryImpl.isAllowedApiUrl(
+          Uri.parse(url),
+          releaseMode: true,
+        ),
+        isTrue,
+        reason: 'Expected $url to be allowed in release mode',
+      );
+    }
+
+    expect(
+      AuthRepositoryImpl.isAllowedApiUrl(
+        Uri.parse('http://example.com'),
+        releaseMode: true,
+      ),
+      isFalse,
+    );
+  });
+
+  test('PatientApiService accepts local and LAN HTTP URLs without blocking',
+      () async {
+    for (final baseUrl in [
+      'http://127.0.0.1:5000',
+      'http://localhost:5000',
+      'http://10.0.2.2:5000',
+      'http://192.168.1.50:5000',
+    ]) {
+      final localAdapter = ContractAdapter()
+        ..respond = (_) => {'success': true, 'departments': []};
+      final localApi = PatientApiService(
+        dio: Dio(BaseOptions(baseUrl: baseUrl))
+          ..httpClientAdapter = localAdapter,
+      );
+      final res = await localApi.getPublicHome();
+      expect(res['success'], isTrue);
+      expect(localAdapter.calls.single.uri.toString(),
+          '$baseUrl/api/v1/mobile/public/home');
+      expect(AuthRepositoryImpl.isAllowedApiUrl(Uri.parse(baseUrl)), isTrue);
+    }
+  });
+
+  test('PatientApiService.changePassword sends expected payload and handles errors',
+      () async {
+    adapter.respond = (_) => {
+          'success': true,
+          'message': 'Đổi mật khẩu thành công!',
+        };
+    final res = await api.changePassword(
+      identifier: '  0901234561  ',
+      currentPassword: 'old-password',
+      newPassword: 'new-password',
+    );
+    expect(res['success'], isTrue);
+    expect(res['message'], 'Đổi mật khẩu thành công!');
+    expect(adapter.calls.single.path, '/api/v1/mobile/auth/change-password');
+    expect(adapter.calls.single.data, {
+      'identifier': '0901234561',
+      'current_password': 'old-password',
+      'new_password': 'new-password',
+    });
+
+    adapter.status = 401;
+    adapter.respond = (_) => {
+          'success': false,
+          'message': 'Mật khẩu hiện tại không đúng.',
+        };
+    await expectLater(
+      api.changePassword(
+        identifier: '0901234561',
+        currentPassword: 'wrong',
+        newPassword: 'new-password',
+      ),
+      throwsA(predicate((error) =>
+          error.toString().contains('Mật khẩu hiện tại không đúng.'))),
+    );
   });
 }

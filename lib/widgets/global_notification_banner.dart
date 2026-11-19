@@ -5,7 +5,7 @@ import '../core/app_animations.dart';
 import '../screens/notifications_screen.dart';
 import '../services/sound_service.dart';
 
-/// Displays an in-app notification toast above every route in the Navigator.
+/// Hien thi thong bao noi phia tren moi route trong Navigator.
 class GlobalNotificationBanner extends StatefulWidget {
   const GlobalNotificationBanner({super.key, required this.navigatorKey});
 
@@ -187,12 +187,12 @@ class _GlobalNotificationBannerState extends State<GlobalNotificationBanner> {
                                     ),
                                   ),
                                   const SizedBox(width: 8),
-                                  IconButton(
-                                    icon: const Icon(Icons.close,
+                                  const IconButton(
+                                    icon: Icon(Icons.close,
                                         color: Colors.white54, size: 18),
                                     onPressed: GlobalNotificationBanner.dismiss,
                                     padding: EdgeInsets.zero,
-                                    constraints: const BoxConstraints(),
+                                    constraints: BoxConstraints(),
                                   ),
                                 ],
                               ),

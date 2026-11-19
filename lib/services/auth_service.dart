@@ -71,13 +71,40 @@ class AuthRepositoryImpl implements AuthRepository {
     return 'http://127.0.0.1:5000';
   }
 
-  static bool isAllowedApiUrl(Uri? uri) {
-    if (uri == null || !uri.hasAuthority || uri.userInfo.isNotEmpty ||
+  static bool _isLocalOrLanHost(String host) {
+    final normalized = host.trim().toLowerCase();
+    if (normalized == 'localhost' ||
+        normalized == '127.0.0.1' ||
+        normalized == '10.0.2.2') {
+      return true;
+    }
+    final parts = normalized.split('.');
+    if (parts.length != 4) return false;
+    final octets = <int>[];
+    for (final part in parts) {
+      if (!RegExp(r'^\d{1,3}$').hasMatch(part)) return false;
+      final value = int.tryParse(part);
+      if (value == null || value < 0 || value > 255) return false;
+      octets.add(value);
+    }
+    final a = octets[0];
+    final b = octets[1];
+    return a == 10 ||
+        (a == 192 && b == 168) ||
+        (a == 172 && b >= 16 && b <= 31);
+  }
+
+  static bool isAllowedApiUrl(Uri? uri, {bool releaseMode = kReleaseMode}) {
+    if (uri == null ||
+        !uri.hasAuthority ||
+        uri.host.isEmpty ||
+        uri.userInfo.isNotEmpty ||
         !['http', 'https'].contains(uri.scheme)) {
       return false;
     }
-    final local = uri.host == 'localhost' || uri.host == '127.0.0.1';
-    return !kReleaseMode || uri.scheme == 'https' || local;
+    return !releaseMode ||
+        uri.scheme == 'https' ||
+        _isLocalOrLanHost(uri.host);
   }
 
   final FlutterSecureStorage secureStorage;

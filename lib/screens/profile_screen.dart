@@ -144,6 +144,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
               onPressed: busy
                   ? null
                   : () async {
+                      final newPass = newController.text;
+                      final currentPass = oldController.text;
+                      if (currentPass.isEmpty) {
+                        setDialogState(() {
+                          errorMsg = 'Vui lòng nhập mật khẩu hiện tại.';
+                        });
+                        return;
+                      }
+                      if (newPass.length < 6 || newPass.trim() != newPass) {
+                        setDialogState(() {
+                          errorMsg = 'Mật khẩu mới cần tối thiểu 6 ký tự và không có khoảng trắng đầu/cuối.';
+                        });
+                        return;
+                      }
                       setDialogState(() {
                         busy = true;
                         errorMsg = null;
@@ -152,10 +166,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         final identifier = user.phone.isNotEmpty
                             ? user.phone
                             : (_profile['username'] ?? user.email).toString();
-                        final newPass = newController.text;
                         final res = await _api.changePassword(
                           identifier: identifier,
-                          currentPassword: oldController.text,
+                          currentPassword: currentPass,
                           newPassword: newPass,
                         );
                         if (!ctx.mounted) return;
@@ -411,21 +424,38 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ? Map<String, dynamic>.from(_profile['vitals'] as Map)
         : null;
 
-    final bhytVal = _profile['so_the_bhyt']?.toString() ??
-        _profile['bhyt']?.toString() ??
-        'Chưa cập nhật';
-    final nhomMauVal = _profile['nhom_mau']?.toString() ?? 'Chưa rõ';
-    final cccdVal = _profile['so_cccd']?.toString() ??
-        _profile['cccd']?.toString() ??
-        'Chưa cập nhật';
-    final ngaySinhVal = _profile['ngay_sinh']?.toString() ?? 'Chưa cập nhật';
-    final gioiTinhVal = _profile['gioi_tinh']?.toString() ?? 'Chưa cập nhật';
-    final tienSuVal = _profile['tien_su_benh']?.toString() ??
-        _profile['benh_nen']?.toString() ??
-        'Không có ghi nhận đặc biệt';
-    final emergencyPhone = _profile['nguoi_than_sdt']?.toString() ??
-        _profile['lien_he_khan_cap']?.toString() ??
-        'Chưa cập nhật';
+    String textOrFallback(dynamic value, String fallback) {
+      final text = value?.toString().trim() ?? '';
+      return text.isNotEmpty ? text : fallback;
+    }
+
+    final bhytVal = textOrFallback(
+        _profile['so_the_bhyt'] ?? _profile['bhyt'], 'Chưa cập nhật');
+    final nhomMauVal = textOrFallback(_profile['nhom_mau'], 'Chưa rõ');
+    final cccdVal =
+        textOrFallback(_profile['so_cccd'] ?? _profile['cccd'], 'Chưa cập nhật');
+    final ngaySinhVal = textOrFallback(_profile['ngay_sinh'], 'Chưa cập nhật');
+    final gioiTinhVal = textOrFallback(_profile['gioi_tinh'], 'Chưa cập nhật');
+    final diaChiVal = textOrFallback(_profile['dia_chi'], 'Chưa cập nhật');
+    final diUngVal =
+        textOrFallback(_profile['di_ung'], 'Không có ghi nhận đặc biệt');
+    final tienSuVal = textOrFallback(
+        _profile['tien_su_benh'] ?? _profile['benh_nen'],
+        'Không có ghi nhận đặc biệt');
+    final relName = (_profile['nguoi_than_ho_ten'] ?? '').toString().trim();
+    final relType = (_profile['nguoi_than_quan_he'] ?? '').toString().trim();
+    final relPhone =
+        (_profile['nguoi_than_sdt'] ?? _profile['lien_he_khan_cap'] ?? '')
+            .toString()
+            .trim();
+    final emergencyParts = <String>[
+      if (relName.isNotEmpty)
+        relType.isNotEmpty ? '$relName ($relType)' : relName,
+      if (relPhone.isNotEmpty) relPhone,
+    ];
+    final emergencyPhone = emergencyParts.isNotEmpty
+        ? emergencyParts.join(' - ')
+        : 'Chưa cập nhật';
 
     return Scaffold(
       backgroundColor: AppColors.slate50,
@@ -589,6 +619,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         value: gioiTinhVal,
                       ),
                       _buildInfoRow(
+                        icon: Icons.location_on_outlined,
+                        label: 'Địa chỉ:',
+                        value: diaChiVal,
+                      ),
+                      _buildInfoRow(
                         icon: Icons.credit_card,
                         label: 'Thẻ BHYT:',
                         value: bhytVal,
@@ -599,6 +634,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         label: 'Nhóm máu:',
                         value: nhomMauVal,
                         iconColor: Colors.redAccent,
+                      ),
+                      _buildInfoRow(
+                        icon: Icons.warning_amber_rounded,
+                        label: 'Tiền sử dị ứng:',
+                        value: diUngVal,
+                        iconColor: Colors.orange.shade700,
                       ),
                       _buildInfoRow(
                         icon: Icons.medical_information_outlined,

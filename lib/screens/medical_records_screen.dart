@@ -26,6 +26,25 @@ class _MedicalRecordsScreenState extends State<MedicalRecordsScreen> {
   List<Map<String, dynamic>> _records = [];
 
   @override
+  void initState() {
+    super.initState();
+    PatientApiService.dataRevision.addListener(_onDataRevisionChanged);
+  }
+
+  @override
+  void dispose() {
+    PatientApiService.dataRevision.removeListener(_onDataRevisionChanged);
+    super.dispose();
+  }
+
+  void _onDataRevisionChanged() {
+    final token = _lastToken;
+    if (mounted && token != null && token.isNotEmpty && !_isLoading) {
+      _loadRecords(token);
+    }
+  }
+
+  @override
   void didUpdateWidget(covariant MedicalRecordsScreen oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.refreshVersion != widget.refreshVersion) {
@@ -290,12 +309,17 @@ class _MedicalRecordsScreenState extends State<MedicalRecordsScreen> {
 
     final isDispensed = donThuocTrangThai == 'Đã cấp thuốc' ||
         donThuocTrangThai == 'Đã nhận thuốc' ||
-        donThuocTrangThai == 'Đã cấp phát';
+        donThuocTrangThai == 'Đã cấp phát' ||
+        donThuocTrangThai == 'Đã phát' ||
+        hinhThucMua == 'Mua tại quầy';
     final isApproved = donThuocTrangThai.contains('Đã duyệt') ||
         donThuocTrangThai == 'Chờ nhận thuốc' ||
         donThuocTrangThai == 'Chưa nhận thuốc';
     final isCanceled = donThuocTrangThai == 'Đã hủy';
-    final isLocked = isDispensed || isApproved || isCanceled;
+    final isInvoicePaid = rec['hoa_don_da_thanh_toan'] == true ||
+        rec['is_prescription_locked'] == true ||
+        presMap?['hoa_don_da_thanh_toan'] == true;
+    final isLocked = isDispensed || isApproved || isCanceled || isInvoicePaid;
 
     String effectiveHinhThuc = hinhThucMua;
     if (effectiveHinhThuc == 'Chưa chọn' || effectiveHinhThuc.isEmpty) {
@@ -305,8 +329,11 @@ class _MedicalRecordsScreenState extends State<MedicalRecordsScreen> {
     }
 
     final isHospital = effectiveHinhThuc == 'Mua tại bệnh viện' ||
+        effectiveHinhThuc == 'Mua tại quầy' ||
+        effectiveHinhThuc == 'BENH_VIEN' ||
         effectiveHinhThuc == 'hospital';
     final isOutside = effectiveHinhThuc == 'Tự mua ngoài' ||
+        effectiveHinhThuc == 'NGOAI' ||
         effectiveHinhThuc == 'outside' ||
         effectiveHinhThuc == 'Mua ngoài';
 
@@ -820,11 +847,13 @@ class _MedicalRecordsScreenState extends State<MedicalRecordsScreen> {
                                 ? 'Hình thức nhận: Mua tại bệnh viện (Đơn đã hoàn tất cấp phát tại Quầy dược bệnh viện)'
                                 : (isApproved
                                     ? 'Hình thức nhận: Mua tại bệnh viện (Đơn đã được duyệt, vui lòng thanh toán và nhận thuốc tại quầy)'
-                                    : (isHospital
-                                        ? 'Hình thức nhận: Mua tại bệnh viện (Đơn chuyển sang quầy thu ngân và kho dược)'
-                                        : (isOutside
-                                            ? 'Hình thức nhận: Tự mua ngoài (Bệnh nhân tự mua tại nhà thuốc bên ngoài)'
-                                            : 'Vui lòng chọn hình thức nhận thuốc:'))),
+                                    : (isInvoicePaid
+                                        ? 'Hình thức nhận: ${isOutside ? 'Tự mua ngoài' : 'Mua tại bệnh viện'} (Hóa đơn viện phí đã thanh toán - Đơn thuốc đã khóa)'
+                                        : (isHospital
+                                            ? 'Hình thức nhận: Mua tại bệnh viện (Đơn chờ duyệt tại quầy thu ngân và kho dược)'
+                                            : (isOutside
+                                                ? 'Hình thức nhận: Tự mua ngoài (Bệnh nhân tự mua tại nhà thuốc bên ngoài)'
+                                                : 'Vui lòng chọn hình thức nhận thuốc:')))),
                             style: TextStyle(
                               fontSize: 11.5,
                               fontWeight: FontWeight.bold,
@@ -847,11 +876,16 @@ class _MedicalRecordsScreenState extends State<MedicalRecordsScreen> {
                     children: [
                       Expanded(
                         child: ElevatedButton.icon(
-                          onPressed: _purchaseBusy ? null : () => _selectPurchaseOption(
-                            donThuocId ?? 0,
-                            'Mua tại bệnh viện',
-                            isLocked: isLocked || donThuocId == null,
-                          ),
+                          onPressed: (_purchaseBusy ||
+                                  isLocked ||
+                                  isHospital ||
+                                  donThuocId == null)
+                              ? null
+                              : () => _selectPurchaseOption(
+                                    donThuocId,
+                                    'Mua tại bệnh viện',
+                                    isLocked: isLocked,
+                                  ),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: isHospital
                                 ? AppColors.medical600
@@ -859,11 +893,19 @@ class _MedicalRecordsScreenState extends State<MedicalRecordsScreen> {
                             foregroundColor: isHospital
                                 ? Colors.white
                                 : AppColors.medical700,
+                            disabledBackgroundColor: isHospital
+                                ? AppColors.medical600
+                                : AppColors.slate100,
+                            disabledForegroundColor: isHospital
+                                ? Colors.white
+                                : AppColors.slate400,
                             elevation: isHospital ? 2 : 0,
                             side: BorderSide(
                               color: isHospital
                                   ? AppColors.medical600
-                                  : AppColors.medical400,
+                                  : (isLocked
+                                      ? AppColors.slate200
+                                      : AppColors.medical400),
                               width: 1.5,
                             ),
                             padding: const EdgeInsets.symmetric(
@@ -877,11 +919,15 @@ class _MedicalRecordsScreenState extends State<MedicalRecordsScreen> {
                           icon: Icon(
                             isHospital
                                 ? Icons.check_circle_rounded
-                                : Icons.local_hospital_outlined,
+                                : (isLocked
+                                    ? Icons.lock_outline
+                                    : Icons.local_hospital_outlined),
                             size: 16,
                             color: isHospital
                                 ? Colors.white
-                                : AppColors.medical600,
+                                : (isLocked
+                                    ? AppColors.slate400
+                                    : AppColors.medical600),
                           ),
                           label: const Text(
                             'Mua tại bệnh viện',
@@ -895,21 +941,33 @@ class _MedicalRecordsScreenState extends State<MedicalRecordsScreen> {
                       const SizedBox(width: 8),
                       Expanded(
                         child: ElevatedButton.icon(
-                          onPressed: _purchaseBusy ? null : () => _selectPurchaseOption(
-                            donThuocId ?? 0,
-                            'Tự mua ngoài',
-                            isLocked: isLocked || donThuocId == null,
-                          ),
+                          onPressed: (_purchaseBusy ||
+                                  isLocked ||
+                                  isOutside ||
+                                  donThuocId == null)
+                              ? null
+                              : () => _selectPurchaseOption(
+                                    donThuocId,
+                                    'Tự mua ngoài',
+                                    isLocked: isLocked,
+                                  ),
                           style: ElevatedButton.styleFrom(
                             backgroundColor:
                                 isOutside ? AppColors.slate800 : Colors.white,
                             foregroundColor:
                                 isOutside ? Colors.white : AppColors.slate700,
+                            disabledBackgroundColor: isOutside
+                                ? AppColors.slate800
+                                : AppColors.slate100,
+                            disabledForegroundColor:
+                                isOutside ? Colors.white : AppColors.slate400,
                             elevation: isOutside ? 2 : 0,
                             side: BorderSide(
                               color: isOutside
                                   ? AppColors.slate800
-                                  : AppColors.slate300,
+                                  : (isLocked
+                                      ? AppColors.slate200
+                                      : AppColors.slate300),
                               width: 1.5,
                             ),
                             padding: const EdgeInsets.symmetric(
@@ -923,10 +981,15 @@ class _MedicalRecordsScreenState extends State<MedicalRecordsScreen> {
                           icon: Icon(
                             isOutside
                                 ? Icons.check_circle_rounded
-                                : Icons.storefront_outlined,
+                                : (isLocked
+                                    ? Icons.lock_outline
+                                    : Icons.storefront_outlined),
                             size: 16,
-                            color:
-                                isOutside ? Colors.white : AppColors.slate600,
+                            color: isOutside
+                                ? Colors.white
+                                : (isLocked
+                                    ? AppColors.slate400
+                                    : AppColors.slate600),
                           ),
                           label: const Text(
                             'Tự mua ngoài',

@@ -7,6 +7,9 @@ import 'core/app_theme.dart';
 import 'screens/auth_screen.dart';
 import 'screens/main_navigation_screen.dart';
 import 'services/auth_service.dart';
+import 'widgets/global_notification_banner.dart';
+
+final GlobalKey<NavigatorState> appNavigatorKey = GlobalKey<NavigatorState>();
 
 void main() {
   runApp(const H2THealthcareApp());
@@ -38,6 +41,7 @@ class H2THealthcareApp extends StatelessWidget {
         ),
       ],
       child: MaterialApp(
+        navigatorKey: appNavigatorKey,
         title: 'H2T Healthcare',
         debugShowCheckedModeBanner: false,
         scrollBehavior: const AppScrollBehavior(),
@@ -45,6 +49,12 @@ class H2THealthcareApp extends StatelessWidget {
         darkTheme: AppTheme.lightTheme,
         themeMode: ThemeMode.light,
         builder: (context, child) {
+          final appContent = Stack(
+            children: [
+              child ?? const SizedBox.shrink(),
+              GlobalNotificationBanner(navigatorKey: appNavigatorKey),
+            ],
+          );
           final windowSize = MediaQuery.of(context).size;
           // Khi mo tren trinh duyet may tinh man hinh rong, hien khung mo phong dien thoai thuc the
           if (windowSize.width > 500) {
@@ -80,14 +90,14 @@ class H2THealthcareApp extends StatelessWidget {
                       data: MediaQuery.of(context).copyWith(
                         size: Size(phoneWidth, phoneHeight),
                       ),
-                      child: child ?? const SizedBox.shrink(),
+                      child: appContent,
                     ),
                   ),
                 ),
               ),
             );
           }
-          return child ?? const SizedBox.shrink();
+          return appContent;
         },
         initialRoute: '/home',
         routes: {
